@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	_ "image/jpeg"
 	"log"
 	"os"
 	"path/filepath"
@@ -134,14 +135,14 @@ func (c *glCanvas) newGlImageTexture(obj fyne.CanvasObject) uint32 {
 	if img.File != "" {
 		if strings.ToLower(filepath.Ext(img.File)) == ".svg" {
 			icon, err := oksvg.ReadIcon(img.File)
-			icon.SetTarget(0, 0, float64(width), float64(height))
-
-			w, h := int(icon.ViewBox.W), int(icon.ViewBox.H)
 			if err != nil {
 				log.Println("SVG Load error:", err, img.File)
 
 				return 0
 			}
+
+			icon.SetTarget(0, 0, float64(width), float64(height))
+			w, h := int(icon.ViewBox.W), int(icon.ViewBox.H)
 			raw = image.NewRGBA(image.Rect(0, 0, width, height))
 			scanner := rasterx.NewScannerGV(w, h, raw, raw.Bounds())
 			raster := rasterx.NewDasher(width, height, scanner)
@@ -149,18 +150,23 @@ func (c *glCanvas) newGlImageTexture(obj fyne.CanvasObject) uint32 {
 			icon.Draw(raster, img.Alpha())
 		} else {
 			file, _ := os.Open(img.File)
+			fmt.Println("decoding file", img.File)
 			pixels, _, err := image.Decode(file)
-			// this is used by our render code, so let's set it to the file aspect
-			img.PixelAspect = float32(pixels.Bounds().Size().X) / float32(pixels.Bounds().Size().Y)
-
 			if err != nil {
 				log.Println("image err", err)
-
 				return 0
 			}
+			b := pixels.Bounds()
+			bs := b.Size()
+			newsize := fyne.Size{bs.X, bs.Y}
+			fmt.Println("Pixel Bounds", b, bs, newsize)
 
+			// this is used by our render code, so let's set it to the file aspect
+			img.PixelAspect = float32(pixels.Bounds().Size().X) / float32(pixels.Bounds().Size().Y)
 			raw = image.NewRGBA(pixels.Bounds())
 			draw.Draw(raw, pixels.Bounds(), pixels, image.ZP, draw.Src)
+			img.SetMinSize(newsize)
+			//img.Resize(newsize)
 		}
 	} else if img.PixelColor != nil {
 		pixels := newPixelImage(img, c.Scale())
