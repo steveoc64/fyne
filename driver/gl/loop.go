@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne"
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
+	"github.com/steveoc64/memdebug"
 )
 
 type funcData struct {
@@ -61,8 +62,10 @@ func (d *gLDriver) runGL() {
 		case object := <-refreshQueue:
 			freeWalked := func(obj fyne.CanvasObject, _ fyne.Position) {
 				texture := textures[obj]
-				if texture != 0 {
-					gl.DeleteTextures(1, &texture)
+				t1 := time.Now()
+				if texture.id != 0 && texture.expires.Before(t1) {
+					memdebug.Print(t1, "clearing texture", texture.id)
+					gl.DeleteTextures(1, &texture.id)
 					delete(textures, obj)
 				}
 			}

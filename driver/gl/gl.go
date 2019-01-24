@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/canvas"
@@ -27,7 +28,12 @@ import (
 	"golang.org/x/image/font"
 )
 
-var textures = make(map[fyne.CanvasObject]uint32)
+type textureCache struct {
+	id      uint32
+	expires time.Time
+}
+
+var textures = make(map[fyne.CanvasObject]textureCache)
 var refreshQueue = make(chan fyne.CanvasObject, 1024)
 
 func getTexture(object fyne.CanvasObject, creator func(canvasObject fyne.CanvasObject) uint32) uint32 {
@@ -38,18 +44,21 @@ func getTexture(object fyne.CanvasObject, creator func(canvasObject fyne.CanvasO
 		skipCache = false
 	}
 
-	if texture != 0 {
+	if texture.id != 0 {
 		if !skipCache {
-			return texture
+			return texture.id
 		}
 
-		gl.DeleteTextures(1, &texture)
+		gl.DeleteTextures(1, &texture.id)
 		delete(textures, object)
 	}
 
-	texture = creator(object)
+	texture = textureCache{
+		id:      creator(object),
+		expires: time.Now().Add(time.Second),
+	}
 	textures[object] = texture
-	return texture
+	return texture.id
 }
 
 func newTexture() uint32 {

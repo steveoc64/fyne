@@ -2,10 +2,12 @@ package gl
 
 import (
 	"math"
+	"time"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/theme"
 	"github.com/go-gl/gl/v3.2-core/gl"
+	"github.com/steveoc64/memdebug"
 )
 
 type glCanvas struct {
@@ -110,6 +112,7 @@ func (c *glCanvas) SetOnKeyDown(keyDown func(*fyne.KeyEvent)) {
 }
 
 func (c *glCanvas) paint(size fyne.Size) {
+	t1 := time.Now()
 	if c.dirty1 {
 		c.dirty1 = false
 	} else {
@@ -131,6 +134,7 @@ func (c *glCanvas) paint(size fyne.Size) {
 		c.drawObject(obj, pos, size)
 	}
 	walkObjects(c.content, fyne.NewPos(0, 0), paintObj)
+	memdebug.Print(t1, "painting", size)
 }
 
 func (c *glCanvas) setDirty() {
