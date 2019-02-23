@@ -8,8 +8,9 @@ type testCanvas struct {
 	content fyne.CanvasObject
 	focused fyne.Focusable
 
-	onTypedRune func(rune)
-	onTypedKey  func(*fyne.KeyEvent)
+	onTypedRune  func(rune)
+	onTypedKey   func(*fyne.KeyEvent)
+	onReleaseKey func(*fyne.KeyEvent)
 }
 
 func (c *testCanvas) Content() fyne.CanvasObject {
@@ -57,6 +58,14 @@ func (c *testCanvas) OnTypedKey() func(*fyne.KeyEvent) {
 
 func (c *testCanvas) SetOnTypedKey(handler func(*fyne.KeyEvent)) {
 	c.onTypedKey = handler
+}
+
+func (c *testCanvas) OnReleaseKey() func(*fyne.KeyEvent) {
+	return c.onReleaseKey
+}
+
+func (c *testCanvas) SetOnReleaseKey(handler func(*fyne.KeyEvent)) {
+	c.onReleaseKey = handler
 }
 
 // NewCanvas returns a single use in-memory canvas used for testing
