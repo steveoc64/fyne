@@ -17,5 +17,6 @@ type Canvas interface {
 	SetOnTypedRune(func(rune))
 	OnTypedKey() func(*KeyEvent)
 	SetOnTypedKey(func(*KeyEvent))
+	OnReleasedKey() func(*KeyEvent))
 	SetOnReleaseKey(func(*KeyEvent))
 }
