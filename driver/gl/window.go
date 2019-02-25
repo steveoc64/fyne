@@ -76,7 +76,7 @@ func (w *window) SetFullScreen(full bool) {
 		if full {
 			w.viewport.SetMonitor(monitor, 0, 0, mode.Width, mode.Height, mode.RefreshRate)
 		} else {
-			min := w.canvas.content.MinSize()
+			min := w.canvas.Content().MinSize()
 			winWidth, winHeight := scaleInt(w.canvas, min.Width), scaleInt(w.canvas, min.Height)
 
 			w.viewport.SetMonitor(nil, 0, 0, winWidth, winHeight, 0) // TODO remember position?
@@ -156,12 +156,13 @@ func (w *window) SetIcon(icon fyne.Resource) {
 }
 
 func (w *window) fitContent() {
-	if w.canvas.content == nil {
+	c := w.canvas.Content()
+	if c == nil {
 		return
 	}
 
 	runOnMainAsync(func() {
-		min := w.canvas.content.MinSize()
+		min := c.MinSize()
 		if w.Padded() {
 			pad := theme.Padding() * 2
 			min = fyne.NewSize(min.Width+pad, min.Height+pad)
@@ -271,7 +272,7 @@ func (w *window) ShowAndRun() {
 }
 
 func (w *window) Content() fyne.CanvasObject {
-	return w.canvas.content
+	return w.canvas.Content()
 }
 
 func (w *window) resize(size fyne.Size) {
@@ -280,7 +281,7 @@ func (w *window) resize(size fyne.Size) {
 		size = fyne.NewSize(size.Width-pad, size.Height-pad)
 	}
 
-	w.canvas.content.Resize(size)
+	w.canvas.Content().Resize(size)
 	w.canvas.setDirty(true)
 }
 
@@ -347,7 +348,7 @@ func (w *window) refresh(viewport *glfw.Window) {
 func findMouseObj(canvas *glCanvas, mouse fyne.Position) (fyne.CanvasObject, int, int) {
 	found := canvas.content
 	foundX, foundY := 0, 0
-	canvas.walkObjects(canvas.content, fyne.NewPos(0, 0), func(walked fyne.CanvasObject, pos fyne.Position) {
+	canvas.walkObjects(canvas.Content(), fyne.NewPos(0, 0), func(walked fyne.CanvasObject, pos fyne.Position) {
 		if mouse.X < pos.X || mouse.Y < pos.Y {
 			return
 		}
@@ -514,16 +515,19 @@ func (w *window) keyPressed(viewport *glfw.Window, key glfw.Key, scancode int, a
 	if w.canvas.Focused() == nil && w.canvas.onTypedKey == nil {
 		return
 	}
+	ev := new(fyne.KeyEvent)
+	ev.Name = keyToName(key)
+
 	if action != glfw.Press { // ignore key up
+		if w.canvas.onReleaseKey != nil {
+			go w.canvas.onReleaseKey(ev)
+		}
 		return
 	}
 
 	if key <= glfw.KeyWorld1 { // filter printable characters handled in charModInput
 		return
 	}
-
-	ev := new(fyne.KeyEvent)
-	ev.Name = keyToName(key)
 
 	if w.canvas.Focused() != nil {
 		go w.canvas.Focused().TypedKey(ev)
