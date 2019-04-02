@@ -14,6 +14,7 @@ import (
 )
 
 func formApp(app fyne.App) {
+	println("test of PR with minimal changes")
 	w := app.NewWindow("Form")
 
 	name := widget.NewEntry()
