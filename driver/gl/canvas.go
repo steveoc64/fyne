@@ -16,8 +16,9 @@ type glCanvas struct {
 	content fyne.CanvasObject
 	focused fyne.Focusable
 
-	onTypedRune func(rune)
-	onTypedKey  func(*fyne.KeyEvent)
+	onTypedRune  func(rune)
+	onTypedKey   func(*fyne.KeyEvent)
+	onReleaseKey func(*fyne.KeyEvent)
 
 	program uint32
 	scale   float32
@@ -127,6 +128,14 @@ func (c *glCanvas) OnTypedKey() func(*fyne.KeyEvent) {
 
 func (c *glCanvas) SetOnTypedKey(typed func(*fyne.KeyEvent)) {
 	c.onTypedKey = typed
+}
+
+func (c *glCanvas) OnReleaseKey() func(*fyne.KeyEvent) {
+	return c.onReleaseKey
+}
+
+func (c *glCanvas) SetOnReleaseKey(typed func(*fyne.KeyEvent)) {
+	c.onReleaseKey = typed
 }
 
 func (c *glCanvas) paint(size fyne.Size) {

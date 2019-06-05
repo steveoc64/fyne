@@ -1,7 +1,9 @@
 // Package canvas contains all of the primitive CanvasObjects that make up a Fyne GUI
 package canvas // import "fyne.io/fyne/canvas"
 
-import "fyne.io/fyne"
+import (
+	"fyne.io/fyne"
+)
 
 type baseObject struct {
 	size     fyne.Size     // The current size of the Rectangle
