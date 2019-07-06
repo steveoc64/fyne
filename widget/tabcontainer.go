@@ -47,6 +47,7 @@ type TabContainer struct {
 	Items       []*TabItem
 	current     int
 	tabLocation TabLocation
+	OnSelected func(int)
 }
 
 // Resize sets a new size for a widget.
@@ -103,6 +104,9 @@ func (t *TabContainer) SelectTabIndex(index int) {
 
 	for i, child := range t.Items {
 		if i == t.current {
+			if t.OnSelected != nil {
+				t.OnSelected(i)
+			}
 			child.Content.Show()
 		} else {
 			child.Content.Hide()
