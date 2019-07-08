@@ -2,7 +2,6 @@ package widget
 
 import (
 	"image/color"
-	"strings"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/canvas"
@@ -11,10 +10,9 @@ import (
 )
 
 type buttonRenderer struct {
-	icon     *canvas.Image
-	lastIcon fyne.Resource
-	label    *canvas.Text
-	shadow   fyne.CanvasObject
+	icon   *canvas.Image
+	label  *canvas.Text
+	shadow fyne.CanvasObject
 
 	objects []fyne.CanvasObject
 	button  *Button
@@ -109,17 +107,35 @@ func (b *buttonRenderer) Refresh() {
 			b.icon = canvas.NewImageFromResource(b.button.Icon)
 			b.objects = append(b.objects, b.icon)
 		} else {
-			if b.button.Disabled() {
-				// if the icon has changed, create a new disabled version
-				// if we could be sure that button.Icon is only ever set through the button.SetIcon method, we could remove this
-				if !strings.HasSuffix(b.button.disabledIcon.Name(), b.button.Icon.Name()) {
-					b.icon.Resource = theme.NewDisabledResource(b.button.Icon)
-				} else {
-					b.icon.Resource = b.button.disabledIcon
+			// if its changed since last render, then reload it
+			if b.icon.Resource != b.button.Icon {
+				println("icon has changed", b.icon.Resource.Name(), "->", b.button.Icon.Name())
+				// replace it in the objects slice
+				for k, v := range b.objects {
+					switch v.(type) {
+					case *canvas.Image:
+						if v.(*canvas.Image) == b.icon {
+							b.icon = canvas.NewImageFromResource(b.button.Icon)
+							b.button.disabledIcon = theme.NewDisabledResource(b.button.Icon)
+							b.objects[k] = b.icon
+							break
+						}
+					}
 				}
-			} else {
-				b.icon.Resource = b.button.Icon
 			}
+			/*
+				if b.button.Disabled() {
+					// if the icon has changed, create a new disabled version
+					// if we could be sure that button.Icon is only ever set through the button.SetIcon method, we could remove this
+					if !strings.HasSuffix(b.button.disabledIcon.Name(), b.button.Icon.Name()) {
+						b.icon.Resource = theme.NewDisabledResource(b.button.Icon)
+					} else {
+						b.icon.Resource = b.button.disabledIcon
+					}
+				} else {
+					b.icon.Resource = b.button.Icon
+				}
+			*/
 		}
 		b.icon.Hidden = false
 	} else if b.icon != nil {
