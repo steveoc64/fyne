@@ -11,9 +11,10 @@ import (
 )
 
 type buttonRenderer struct {
-	icon   *canvas.Image
-	label  *canvas.Text
-	shadow fyne.CanvasObject
+	icon     *canvas.Image
+	lastIcon fyne.Resource
+	label    *canvas.Text
+	shadow   fyne.CanvasObject
 
 	objects []fyne.CanvasObject
 	button  *Button
