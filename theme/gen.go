@@ -98,6 +98,8 @@ func main() {
 	bundleIcon("delete", f)
 	bundleIcon("search", f)
 	bundleIcon("search-replace", f)
+	bundleIcon("menu", f)
+	bundleIcon("menu-expand", f)
 
 	bundleIcon("check-box", f)
 	bundleIcon("check-box-blank", f)
@@ -146,6 +148,9 @@ func main() {
 	bundleIcon("view-zoom-fit", f)
 	bundleIcon("view-zoom-in", f)
 	bundleIcon("view-zoom-out", f)
+
+	bundleIcon("visibility", f)
+	bundleIcon("visibility-off", f)
 
 	f.Close()
 }

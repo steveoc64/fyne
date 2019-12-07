@@ -92,6 +92,24 @@ func TestPopUp_Move_ConstrainedWindowToSmall(t *testing.T) {
 	assert.Equal(t, theme.Padding(), innerPos.Y, "content Y position is adjusted but the window is too small")
 }
 
+func TestPopUp_Resize(t *testing.T) {
+	label := NewLabel("Hi")
+	win := test.NewWindow(NewLabel("OK"))
+	win.Resize(fyne.NewSize(80, 80))
+	pop := NewPopUp(label, win.Canvas())
+
+	size := fyne.NewSize(50, 40)
+	pop.Resize(size)
+
+	innerSize := pop.Content.Size()
+	assert.Equal(t, size.Width-theme.Padding()*2, innerSize.Width)
+	assert.Equal(t, size.Height-theme.Padding()*2, innerSize.Height)
+
+	popSize := pop.Size()
+	assert.Equal(t, 80, popSize.Width) // these are 50 as the popUp must fill our overlay
+	assert.Equal(t, 80, popSize.Height)
+}
+
 func TestPopUp_Tapped(t *testing.T) {
 	label := NewLabel("Hi")
 	pop := NewPopUp(label, test.Canvas())

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"fyne.io/fyne/cmd/fyne/internal/mobile"
 	"github.com/Kodeworks/golang-image-ico"
 	"github.com/jackmordaunt/icns"
 	"github.com/josephspurrier/goversioninfo"
@@ -234,27 +235,18 @@ func (p *packager) packageWindows() error {
 }
 
 func (p *packager) packageAndroid() error {
-	if _, err := exec.LookPath("gomobile"); err != nil {
-		return errors.New("Could not find gomobile for building")
-	}
-
-	cmd := exec.Command("gomobile", "build", "-target", "android")
-	cmd.Dir = p.srcDir
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
+	return mobile.RunNewBuild("android", "", p.icon)
 }
 
 func (p *packager) packageIOS() error {
-	if _, err := exec.LookPath("gomobile"); err != nil {
-		return errors.New("Could not find gomobile for building")
+	err := mobile.RunNewBuild("ios", p.appID, p.icon)
+	if err != nil {
+		return err
 	}
 
-	cmd := exec.Command("gomobile", "build", "-target", "ios", "-bundleid", p.appID)
-	cmd.Dir = p.srcDir
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
+	appDir := filepath.Join(p.dir, p.name+".app")
+	iconPath := filepath.Join(appDir, "Icon.png")
+	return copyFile(p.icon, iconPath)
 }
 
 func (p *packager) addFlags() {

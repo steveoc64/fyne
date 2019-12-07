@@ -1,11 +1,14 @@
 package gomobile
 
 import (
+	"runtime"
+	"strconv"
 	"time"
 
 	"fyne.io/fyne/internal"
 	"fyne.io/fyne/widget"
 	"golang.org/x/mobile/app"
+	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
@@ -19,7 +22,7 @@ import (
 	"fyne.io/fyne/theme"
 )
 
-const tapSecondaryDelay = 300000000 // nanoseconds
+const tapSecondaryDelay = 300 * time.Millisecond
 
 type mobileDriver struct {
 	app   app.App
@@ -32,8 +35,12 @@ type mobileDriver struct {
 // Declare conformity with Driver
 var _ fyne.Driver = (*mobileDriver)(nil)
 
+func init() {
+	runtime.LockOSThread()
+}
+
 func (d *mobileDriver) CreateWindow(title string) fyne.Window {
-	canvas := NewCanvas().(*canvas) // silence lint
+	canvas := NewCanvas().(*mobileCanvas) // silence lint
 	ret := &window{title: title, canvas: canvas, isChild: len(d.windows) > 0}
 	canvas.painter = pgl.NewPainter(canvas, ret)
 
@@ -69,9 +76,9 @@ func (d *mobileDriver) CanvasForObject(fyne.CanvasObject) fyne.Canvas {
 
 func (d *mobileDriver) AbsolutePositionForObject(co fyne.CanvasObject) fyne.Position {
 	var pos fyne.Position
-	c := fyne.CurrentApp().Driver().CanvasForObject(co).(*canvas)
+	c := fyne.CurrentApp().Driver().CanvasForObject(co).(*mobileCanvas)
 
-	driver.WalkVisibleObjectTree(c.content, func(o fyne.CanvasObject, p fyne.Position, _ fyne.Position, _ fyne.Size) bool {
+	c.walkTree(func(o fyne.CanvasObject, p fyne.Position, _ fyne.Position, _ fyne.Size) bool {
 		if o == co {
 			pos = p
 			return true
@@ -91,31 +98,18 @@ func (d *mobileDriver) Quit() {
 	d.app.Send(lifecycle.Event{From: lifecycle.StageAlive, To: lifecycle.StageDead, DrawContext: nil})
 }
 
-func (d *mobileDriver) scheduleFrames(a app.App) {
-	fps := time.NewTicker(time.Second / 60)
-	go func() {
-		for {
-			select {
-			case <-fps.C:
-				a.Send(paint.Event{})
-			}
-		}
-	}()
-}
-
 func (d *mobileDriver) Run() {
 	app.Main(func(a app.App) {
 		d.app = a
 		quit := false
-		d.scheduleFrames(a)
 
 		var currentSize size.Event
 		for e := range a.Events() {
 			current := d.currentWindow()
 			if current == nil {
-				break
+				continue
 			}
-			canvas := current.Canvas().(*canvas)
+			canvas := current.Canvas().(*mobileCanvas)
 
 			switch e := a.Filter(e).(type) {
 			case lifecycle.Event:
@@ -133,20 +127,19 @@ func (d *mobileDriver) Run() {
 				}
 			case size.Event:
 				currentSize = e
-				canvas.dirty = true
 			case paint.Event:
-				if !canvas.inited && d.glctx != nil {
+				if d.glctx == nil || e.External {
+					continue
+				}
+				if !canvas.inited {
 					canvas.inited = true
 					canvas.painter.Init() // we cannot init until the context is set above
 				}
 
-				if canvas.dirty && d.glctx != nil {
-					d.freeDirtyTextures(canvas)
-					canvas.dirty = false
-
-					d.paintWindow(current, currentSize)
-					a.Publish()
-				}
+				d.freeDirtyTextures(canvas)
+				d.paintWindow(current, currentSize)
+				a.Publish()
+				a.Send(paint.Event{})
 			case touch.Event:
 				switch e.Type {
 				case touch.TypeBegin:
@@ -155,6 +148,12 @@ func (d *mobileDriver) Run() {
 					d.tapMoveCanvas(canvas, e.X, e.Y)
 				case touch.TypeEnd:
 					d.tapUpCanvas(canvas, e.X, e.Y)
+				}
+			case key.Event:
+				if e.Direction == key.DirPress {
+					d.typeDownCanvas(canvas, e.Rune, e.Code)
+				} else if e.Direction == key.DirRelease {
+					d.typeUpCanvas(canvas, e.Rune, e.Code)
 				}
 			}
 
@@ -167,7 +166,7 @@ func (d *mobileDriver) Run() {
 
 func (d *mobileDriver) onStart() {
 	for _, win := range d.AllWindows() {
-		win.Canvas().(*canvas).painter.Init() // we cannot init until the context is set above
+		win.Canvas().(*mobileCanvas).painter.Init() // we cannot init until the context is set above
 	}
 }
 
@@ -175,7 +174,7 @@ func (d *mobileDriver) onStop() {
 }
 
 func (d *mobileDriver) paintWindow(window fyne.Window, sz size.Event) {
-	canvas := window.Canvas().(*canvas)
+	canvas := window.Canvas().(*mobileCanvas)
 	currentOrientation = sz.Orientation
 
 	r, g, b, a := theme.BackgroundColor().RGBA()
@@ -206,7 +205,7 @@ func (d *mobileDriver) paintWindow(window fyne.Window, sz size.Event) {
 	canvas.walkTree(paint, afterPaint)
 }
 
-func (d *mobileDriver) tapDownCanvas(canvas *canvas, x, y float32) {
+func (d *mobileDriver) tapDownCanvas(canvas *mobileCanvas, x, y float32) {
 	tapX := internal.UnscaleInt(canvas, int(x))
 	tapY := internal.UnscaleInt(canvas, int(y))
 	pos := fyne.NewPos(tapX, tapY)
@@ -214,7 +213,7 @@ func (d *mobileDriver) tapDownCanvas(canvas *canvas, x, y float32) {
 	canvas.tapDown(pos)
 }
 
-func (d *mobileDriver) tapMoveCanvas(canvas *canvas, x, y float32) {
+func (d *mobileDriver) tapMoveCanvas(canvas *mobileCanvas, x, y float32) {
 	tapX := internal.UnscaleInt(canvas, int(x))
 	tapY := internal.UnscaleInt(canvas, int(y))
 	pos := fyne.NewPos(tapX, tapY)
@@ -224,7 +223,7 @@ func (d *mobileDriver) tapMoveCanvas(canvas *canvas, x, y float32) {
 	})
 }
 
-func (d *mobileDriver) tapUpCanvas(canvas *canvas, x, y float32) {
+func (d *mobileDriver) tapUpCanvas(canvas *mobileCanvas, x, y float32) {
 	tapX := internal.UnscaleInt(canvas, int(x))
 	tapY := internal.UnscaleInt(canvas, int(y))
 	pos := fyne.NewPos(tapX, tapY)
@@ -238,7 +237,192 @@ func (d *mobileDriver) tapUpCanvas(canvas *canvas, x, y float32) {
 	})
 }
 
-func (d *mobileDriver) freeDirtyTextures(canvas *canvas) {
+func keyToName(code key.Code) fyne.KeyName {
+	switch code {
+	// non-printable
+	case key.CodeEscape:
+		return fyne.KeyEscape
+	case key.CodeReturnEnter:
+		return fyne.KeyReturn
+	case key.CodeTab:
+		return fyne.KeyTab
+	case key.CodeDeleteBackspace:
+		return fyne.KeyBackspace
+	case key.CodeInsert:
+		return fyne.KeyInsert
+	case key.CodePageUp:
+		return fyne.KeyPageUp
+	case key.CodePageDown:
+		return fyne.KeyPageDown
+	case key.CodeHome:
+		return fyne.KeyHome
+	case key.CodeEnd:
+		return fyne.KeyEnd
+
+	case key.CodeF1:
+		return fyne.KeyF1
+	case key.CodeF2:
+		return fyne.KeyF2
+	case key.CodeF3:
+		return fyne.KeyF3
+	case key.CodeF4:
+		return fyne.KeyF4
+	case key.CodeF5:
+		return fyne.KeyF5
+	case key.CodeF6:
+		return fyne.KeyF6
+	case key.CodeF7:
+		return fyne.KeyF7
+	case key.CodeF8:
+		return fyne.KeyF8
+	case key.CodeF9:
+		return fyne.KeyF9
+	case key.CodeF10:
+		return fyne.KeyF10
+	case key.CodeF11:
+		return fyne.KeyF11
+	case key.CodeF12:
+		return fyne.KeyF12
+
+	case key.CodeKeypadEnter:
+		return fyne.KeyEnter
+
+	// printable
+	case key.CodeA:
+		return fyne.KeyA
+	case key.CodeB:
+		return fyne.KeyB
+	case key.CodeC:
+		return fyne.KeyC
+	case key.CodeD:
+		return fyne.KeyD
+	case key.CodeE:
+		return fyne.KeyE
+	case key.CodeF:
+		return fyne.KeyF
+	case key.CodeG:
+		return fyne.KeyG
+	case key.CodeH:
+		return fyne.KeyH
+	case key.CodeI:
+		return fyne.KeyI
+	case key.CodeJ:
+		return fyne.KeyJ
+	case key.CodeK:
+		return fyne.KeyK
+	case key.CodeL:
+		return fyne.KeyL
+	case key.CodeM:
+		return fyne.KeyM
+	case key.CodeN:
+		return fyne.KeyN
+	case key.CodeO:
+		return fyne.KeyO
+	case key.CodeP:
+		return fyne.KeyP
+	case key.CodeQ:
+		return fyne.KeyQ
+	case key.CodeR:
+		return fyne.KeyR
+	case key.CodeS:
+		return fyne.KeyS
+	case key.CodeT:
+		return fyne.KeyT
+	case key.CodeU:
+		return fyne.KeyU
+	case key.CodeV:
+		return fyne.KeyV
+	case key.CodeW:
+		return fyne.KeyW
+	case key.CodeX:
+		return fyne.KeyX
+	case key.CodeY:
+		return fyne.KeyY
+	case key.CodeZ:
+		return fyne.KeyZ
+	case key.Code0, key.CodeKeypad0:
+		return fyne.Key0
+	case key.Code1, key.CodeKeypad1:
+		return fyne.Key1
+	case key.Code2, key.CodeKeypad2:
+		return fyne.Key2
+	case key.Code3, key.CodeKeypad3:
+		return fyne.Key3
+	case key.Code4, key.CodeKeypad4:
+		return fyne.Key4
+	case key.Code5, key.CodeKeypad5:
+		return fyne.Key5
+	case key.Code6, key.CodeKeypad6:
+		return fyne.Key6
+	case key.Code7, key.CodeKeypad7:
+		return fyne.Key7
+	case key.Code8, key.CodeKeypad8:
+		return fyne.Key8
+	case key.Code9, key.CodeKeypad9:
+		return fyne.Key9
+
+	case key.CodeSemicolon:
+		return fyne.KeySemicolon
+	case key.CodeEqualSign:
+		return fyne.KeyEqual
+
+	case key.CodeSpacebar:
+		return fyne.KeySpace
+	case key.CodeApostrophe:
+		return fyne.KeyApostrophe
+	case key.CodeComma:
+		return fyne.KeyComma
+	case key.CodeHyphenMinus, key.CodeKeypadHyphenMinus:
+		return fyne.KeyMinus
+	case key.CodeFullStop, key.CodeKeypadFullStop:
+		return fyne.KeyPeriod
+	case key.CodeSlash:
+		return fyne.KeySlash
+	case key.CodeLeftSquareBracket:
+		return fyne.KeyLeftBracket
+	case key.CodeBackslash:
+		return fyne.KeyBackslash
+	case key.CodeRightSquareBracket:
+		return fyne.KeyRightBracket
+	}
+	return ""
+}
+
+func runeToPrintable(r rune) rune {
+	if strconv.IsPrint(r) {
+		return r
+	}
+
+	return 0
+}
+
+func (d *mobileDriver) typeDownCanvas(canvas *mobileCanvas, r rune, code key.Code) {
+	keyName := keyToName(code)
+	r = runeToPrintable(r)
+	keyEvent := &fyne.KeyEvent{Name: keyName}
+
+	if canvas.Focused() != nil {
+		if keyName != "" {
+			canvas.Focused().TypedKey(keyEvent)
+		}
+		if r > 0 {
+			canvas.Focused().TypedRune(r)
+		}
+	} else if canvas.onTypedKey != nil {
+		if keyName != "" {
+			canvas.onTypedKey(keyEvent)
+		}
+		if r > 0 {
+			canvas.onTypedRune(r)
+		}
+	}
+}
+
+func (d *mobileDriver) typeUpCanvas(canvas *mobileCanvas, r rune, code key.Code) {
+
+}
+
+func (d *mobileDriver) freeDirtyTextures(canvas *mobileCanvas) {
 	for {
 		select {
 		case object := <-canvas.refreshQueue:

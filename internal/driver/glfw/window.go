@@ -1,5 +1,6 @@
 package glfw
 
+import "C"
 import (
 	"bytes"
 	"image"
@@ -14,6 +15,7 @@ import (
 	"fyne.io/fyne"
 	"fyne.io/fyne/driver/desktop"
 	"fyne.io/fyne/internal"
+	"fyne.io/fyne/internal/cache"
 	"fyne.io/fyne/internal/driver"
 	"fyne.io/fyne/internal/painter/gl"
 	"fyne.io/fyne/widget"
@@ -406,7 +408,7 @@ func (w *window) closed(viewport *glfw.Window) {
 	w.canvas.walkTrees(nil, func(node *renderCacheNode) {
 		switch co := node.obj.(type) {
 		case fyne.Widget:
-			widget.DestroyRenderer(co)
+			cache.DestroyRenderer(co)
 		}
 	})
 
@@ -490,7 +492,7 @@ func (w *window) mouseMoved(viewport *glfw.Window, xpos float64, ypos float64) {
 	cursor := defaultCursor
 	obj, pos := w.findObjectAtPositionMatching(w.canvas, w.mousePos, func(object fyne.CanvasObject) bool {
 		if wid, ok := object.(*widget.Entry); ok {
-			if !wid.ReadOnly {
+			if !wid.Disabled() {
 				cursor = entryCursor
 			}
 		} else if _, ok := object.(*widget.Hyperlink); ok {
@@ -579,6 +581,7 @@ func (w *window) mouseClicked(viewport *glfw.Window, btn glfw.MouseButton, actio
 	})
 	ev := new(fyne.PointEvent)
 	ev.Position = pos
+	ev.AbsolutePosition = w.mousePos
 
 	coMouse := co
 	// Switch the mouse target to the dragging object if one is set
@@ -603,10 +606,10 @@ func (w *window) mouseClicked(viewport *glfw.Window, btn glfw.MouseButton, actio
 	needsfocus := true
 	wid := w.canvas.Focused()
 	if wid != nil {
-		needsfocus = false
 		if wid.(fyne.CanvasObject) != co {
 			w.canvas.Unfocus()
-			needsfocus = true
+		} else {
+			needsfocus = false
 		}
 	}
 
@@ -617,10 +620,8 @@ func (w *window) mouseClicked(viewport *glfw.Window, btn glfw.MouseButton, actio
 	}
 
 	// we cannot switch here as objects may respond to multiple cases
-	if wid, ok := co.(fyne.Focusable); ok {
-		if needsfocus == true {
-			w.canvas.Focus(wid)
-		}
+	if wid, ok := co.(fyne.Focusable); ok && needsfocus {
+		w.canvas.Focus(wid)
 	}
 
 	// Check for double click/tap
@@ -677,7 +678,6 @@ func (w *window) mouseScrolled(viewport *glfw.Window, xoff float64, yoff float64
 		_, ok := object.(fyne.Scrollable)
 		return ok
 	})
-
 	switch wid := co.(type) {
 	case fyne.Scrollable:
 		ev := &fyne.ScrollEvent{}
@@ -775,6 +775,44 @@ func keyToName(key glfw.Key) fyne.KeyName {
 		return fyne.KeyEnter
 
 	// printable
+	case glfw.KeySpace:
+		return fyne.KeySpace
+	case glfw.KeyApostrophe:
+		return fyne.KeyApostrophe
+	case glfw.KeyComma:
+		return fyne.KeyComma
+	case glfw.KeyMinus:
+		return fyne.KeyMinus
+	case glfw.KeyPeriod:
+		return fyne.KeyPeriod
+	case glfw.KeySlash:
+		return fyne.KeySlash
+
+	case glfw.Key0:
+		return fyne.Key0
+	case glfw.Key1:
+		return fyne.Key1
+	case glfw.Key2:
+		return fyne.Key2
+	case glfw.Key3:
+		return fyne.Key3
+	case glfw.Key4:
+		return fyne.Key4
+	case glfw.Key5:
+		return fyne.Key5
+	case glfw.Key6:
+		return fyne.Key6
+	case glfw.Key7:
+		return fyne.Key7
+	case glfw.Key8:
+		return fyne.Key8
+	case glfw.Key9:
+		return fyne.Key9
+	case glfw.KeySemicolon:
+		return fyne.KeySemicolon
+	case glfw.KeyEqual:
+		return fyne.KeyEqual
+
 	case glfw.KeyA:
 		return fyne.KeyA
 	case glfw.KeyB:
@@ -827,26 +865,13 @@ func keyToName(key glfw.Key) fyne.KeyName {
 		return fyne.KeyY
 	case glfw.KeyZ:
 		return fyne.KeyZ
-	case glfw.Key0:
-		return fyne.Key0
-	case glfw.Key1:
-		return fyne.Key1
-	case glfw.Key2:
-		return fyne.Key2
-	case glfw.Key3:
-		return fyne.Key3
-	case glfw.Key4:
-		return fyne.Key4
-	case glfw.Key5:
-		return fyne.Key5
-	case glfw.Key6:
-		return fyne.Key6
-	case glfw.Key7:
-		return fyne.Key7
-	case glfw.Key8:
-		return fyne.Key8
-	case glfw.Key9:
-		return fyne.Key9
+
+	case glfw.KeyLeftBracket:
+		return fyne.KeyLeftBracket
+	case glfw.KeyBackslash:
+		return fyne.KeyBackslash
+	case glfw.KeyRightBracket:
+		return fyne.KeyRightBracket
 
 	// desktop
 	case glfw.KeyLeftShift:
@@ -945,17 +970,20 @@ func (w *window) keyPressed(viewport *glfw.Window, key glfw.Key, scancode int, a
 		}
 	}
 
-	if shortcutable, ok := w.canvas.Focused().(fyne.Shortcutable); ok {
-		if shortcutable.TypedShortcut(shortcut) {
+	if shortcut != nil {
+		if shortcutable, ok := w.canvas.Focused().(fyne.Shortcutable); ok {
+			if shortcutable.TypedShortcut(shortcut) {
+				return
+			}
+		} else if w.canvas.shortcut.TypedShortcut(shortcut) {
 			return
 		}
-	} else if w.canvas.shortcut.TypedShortcut(shortcut) {
-		return
 	}
 
 	// No shortcut detected, pass down to TypedKey
-	if w.canvas.Focused() != nil {
-		w.queueEvent(func() { w.canvas.Focused().TypedKey(keyEvent) })
+	focused := w.canvas.Focused()
+	if focused != nil {
+		w.queueEvent(func() { focused.TypedKey(keyEvent) })
 	} else if w.canvas.onTypedKey != nil {
 		w.queueEvent(func() { w.canvas.onTypedKey(keyEvent) })
 	}
@@ -989,8 +1017,9 @@ func (w *window) charModInput(viewport *glfw.Window, char rune, mods glfw.Modifi
 		return
 	}
 
-	if w.canvas.Focused() != nil {
-		w.queueEvent(func() { w.canvas.Focused().TypedRune(char) })
+	focused := w.canvas.Focused()
+	if focused != nil {
+		w.queueEvent(func() { focused.TypedRune(char) })
 	} else if w.canvas.onTypedRune != nil {
 		w.queueEvent(func() { w.canvas.onTypedRune(char) })
 	}
@@ -1083,7 +1112,7 @@ func (d *gLDriver) CreateWindow(title string) fyne.Window {
 		ret.canvas.context = ret
 		ret.canvas.detectedScale = ret.detectScale()
 		ret.canvas.scale = ret.selectScale()
-		ret.SetIcon(ret.icon) // if this is nil we will get the app icon
+		ret.SetIcon(ret.icon)
 		d.windows = append(d.windows, ret)
 
 		win.SetCloseCallback(ret.closed)

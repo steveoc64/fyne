@@ -23,7 +23,7 @@ var _ fyne.Draggable = (*Slider)(nil)
 
 // Slider if a widget that can slide between two fixed values.
 type Slider struct {
-	baseWidget
+	BaseWidget
 
 	Value float64
 	Min   float64
@@ -82,17 +82,17 @@ func (s *Slider) Set(value float64) {
 
 // Resize sets a new size for a widget.
 func (s *Slider) Resize(size fyne.Size) {
-	s.resize(size, s)
+	s.Resize(size, s)
 }
 
 // MinSize returns the smallest size this widget can be.
 func (s *Slider) MinSize() fyne.Size {
-	return s.minSize(s)
+	return s.MinSize(s)
 }
 
 // Show this widget, if it was previously hidden.
 func (s *Slider) Show() {
-	s.show(s)
+	s.Show(s)
 }
 
 // Hide this widget, if it was previously visible.
@@ -171,8 +171,15 @@ func (s *Slider) updateValue(ratio float64) {
 	}
 }
 
+// MinSize returns the size that this widget should not shrink below
+func (s *Slider) MinSize() fyne.Size {
+	s.ExtendBaseWidget(s)
+	return s.BaseWidget.MinSize()
+}
+
 // CreateRenderer links this widget to its renderer.
 func (s *Slider) CreateRenderer() fyne.WidgetRenderer {
+	s.ExtendBaseWidget(s)
 	track := canvas.NewRectangle(theme.ButtonColor())
 	active := canvas.NewRectangle(theme.TextColor())
 	thumb := &canvas.Circle{
@@ -198,16 +205,12 @@ type sliderRenderer struct {
 	slider  *Slider
 }
 
-// ApplyTheme is called when the Slider may need to update its look.
-func (s *sliderRenderer) ApplyTheme() {
+// Refresh updates the widget state for drawing.
+func (s *sliderRenderer) Refresh() {
 	s.track.FillColor = theme.ButtonColor()
 	s.thumb.FillColor = theme.TextColor()
 	s.active.FillColor = theme.TextColor()
-	s.Refresh()
-}
 
-// Refresh updates the widget state for drawing.
-func (s *sliderRenderer) Refresh() {
 	s.Layout(s.slider.Size())
 	canvas.Refresh(s.slider)
 }

@@ -13,12 +13,12 @@ import (
 )
 
 func entryRenderTexts(e *Entry) []*canvas.Text {
-	textWid := Renderer(e).(*entryRenderer).text
+	textWid := e.text
 	return Renderer(textWid).(*textRenderer).texts
 }
 
 func entryRenderPlaceholderTexts(e *Entry) []*canvas.Text {
-	textWid := Renderer(e).(*entryRenderer).placeholder
+	textWid := e.placeholder
 	return Renderer(textWid).(*textRenderer).texts
 }
 
@@ -413,7 +413,7 @@ func TestEntry_TappedSecondary(t *testing.T) {
 	defer test.NewApp()
 
 	entry := NewEntry()
-	fyne.CurrentApp().Driver().CanvasForObject(entry).(test.WindowlessCanvas).Resize(fyne.NewSize(100, 100))
+	fyne.CurrentApp().Driver().CanvasForObject(entry).(test.WindowlessCanvas).Resize(fyne.NewSize(100, 150))
 
 	tapPos := fyne.NewPos(1, 1)
 	test.TapSecondaryAt(entry, tapPos)
@@ -423,11 +423,11 @@ func TestEntry_TappedSecondary(t *testing.T) {
 	assert.NotNil(t, over)
 
 	cont := over.(*PopUp).Content
-	assert.Equal(t, cont.Position().X, pos.X+theme.Padding()+tapPos.X)
-	assert.Equal(t, cont.Position().Y, pos.Y+theme.Padding()+tapPos.Y)
+	assert.Equal(t, pos.X+theme.Padding()+tapPos.X, cont.Position().X)
+	assert.Equal(t, pos.Y+theme.Padding()+tapPos.Y, cont.Position().Y)
 
 	items := cont.(*Box).Children
-	assert.Equal(t, 2, len(items)) // Paste
+	assert.Equal(t, 4, len(items)) // Cut, Copy, Paste, Select All
 }
 
 func TestEntry_FocusWithPopUp(t *testing.T) {
@@ -451,6 +451,28 @@ func TestEntry_HidePopUpOnEntry(t *testing.T) {
 	assert.NotNil(t, entry.popUp)
 	assert.Equal(t, "KJGFD", entry.Text)
 	assert.Equal(t, true, entry.popUp.Hidden)
+}
+
+func TestEntry_MouseDownOnSelect(t *testing.T) {
+	entry := NewEntry()
+	entry.SetText("Ahnj\nBuki\n")
+	entry.selectAll()
+
+	testCharSize := theme.TextSize()
+	pos := fyne.NewPos(testCharSize, testCharSize*4) // tap below rows
+	ev := &fyne.PointEvent{Position: pos}
+
+	me := &desktop.MouseEvent{PointEvent: *ev, Button: desktop.RightMouseButton}
+	entry.MouseDown(me)
+	entry.MouseUp(me)
+
+	assert.Equal(t, entry.selectedText(), "Ahnj\nBuki\n")
+
+	me = &desktop.MouseEvent{PointEvent: *ev, Button: desktop.LeftMouseButton}
+	entry.MouseDown(me)
+	entry.MouseUp(me)
+
+	assert.Equal(t, entry.selectedText(), "")
 }
 
 func TestEntry_MouseClickAndDragAfterRow(t *testing.T) {
@@ -1281,4 +1303,73 @@ func TestEntry_EraseEmptySelection(t *testing.T) {
 	a, b = e.selection()
 	assert.Equal(t, -1, a)
 	assert.Equal(t, -1, b)
+}
+
+func TestPasswordEntry_Reveal(t *testing.T) {
+	entry := NewPasswordEntry()
+
+	test.Type(entry, "Hié™שרה")
+	assert.Equal(t, "Hié™שרה", entry.Text)
+	assert.Equal(t, "*******", entryRenderTexts(entry)[0].Text)
+
+	// Reveal password that should be obfuscated until it is refreshed
+	entry.Password = false
+	Refresh(entry)
+
+	assert.Equal(t, "Hié™שרה", entry.Text)
+	assert.Equal(t, "Hié™שרה", entryRenderTexts(entry)[0].Text)
+}
+
+func TestEntry_PageUpDown(t *testing.T) {
+	t.Run("single line", func(*testing.T) {
+		e := NewEntry()
+		e.SetText("Testing")
+		// move right, press & hold shift and pagedown
+		typeKeys(e, fyne.KeyRight, keyShiftLeftDown, fyne.KeyPageDown)
+		a, b := e.selection()
+		assert.Equal(t, 1, a)
+		assert.Equal(t, 7, b)
+		assert.Equal(t, "esting", e.selectedText())
+		assert.Equal(t, 0, e.CursorRow)
+		assert.Equal(t, 7, e.CursorColumn)
+		// while shift is held press pageup
+		typeKeys(e, fyne.KeyPageUp)
+		a, b = e.selection()
+		assert.Equal(t, 0, a)
+		assert.Equal(t, 1, b)
+		assert.Equal(t, "T", e.selectedText())
+		assert.Equal(t, 0, e.CursorRow)
+		assert.Equal(t, 0, e.CursorColumn)
+		// release shift and press pagedown
+		typeKeys(e, keyShiftLeftUp, fyne.KeyPageDown)
+		assert.Equal(t, "", e.selectedText())
+		assert.Equal(t, 0, e.CursorRow)
+		assert.Equal(t, 7, e.CursorColumn)
+	})
+
+	t.Run("page down single line", func(*testing.T) {
+		e := NewMultiLineEntry()
+		e.SetText("Testing\nTesting\nTesting")
+		// move right, press & hold shift and pagedown
+		typeKeys(e, fyne.KeyRight, keyShiftLeftDown, fyne.KeyPageDown)
+		a, b := e.selection()
+		assert.Equal(t, 1, a)
+		assert.Equal(t, 23, b)
+		assert.Equal(t, "esting\nTesting\nTesting", e.selectedText())
+		assert.Equal(t, 2, e.CursorRow)
+		assert.Equal(t, 7, e.CursorColumn)
+		// while shift is held press pageup
+		typeKeys(e, fyne.KeyPageUp)
+		a, b = e.selection()
+		assert.Equal(t, 0, a)
+		assert.Equal(t, 1, b)
+		assert.Equal(t, "T", e.selectedText())
+		assert.Equal(t, 0, e.CursorRow)
+		assert.Equal(t, 0, e.CursorColumn)
+		// release shift and press pagedown
+		typeKeys(e, keyShiftLeftUp, fyne.KeyPageDown)
+		assert.Equal(t, "", e.selectedText())
+		assert.Equal(t, 2, e.CursorRow)
+		assert.Equal(t, 7, e.CursorColumn)
+	})
 }
