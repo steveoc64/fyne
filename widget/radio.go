@@ -161,8 +161,8 @@ type Radio struct {
 	hoveredItemIndex int
 	hovered          bool
 
-	selectedBinding *binding.StringBinding
-	optionBinding   *binding.ListBinding
+	selectedBinding binding.IString
+	optionBinding   binding.List
 	selectedNotify  *binding.NotifyFunction
 	optionNotify    *binding.NotifyFunction
 }
@@ -274,7 +274,7 @@ func (r *Radio) SetSelected(option string) {
 	r.Selected = option
 
 	if r.selectedBinding != nil {
-		r.selectedBinding.Set(r.Selected)
+		r.selectedBinding.SetString(r.Selected)
 	}
 
 	if r.OnChanged != nil {
@@ -310,7 +310,7 @@ func (r *Radio) removeDuplicateOptions() {
 
 // BindSelected binds the Radio's Selected Option to the given data binding.
 // Returns the Radio for chaining.
-func (r *Radio) BindSelected(data *binding.StringBinding) *Radio {
+func (r *Radio) BindSelected(data binding.IString) *Radio {
 	r.selectedBinding = data
 	r.selectedNotify = data.AddStringListener(r.SetSelected)
 	return r
@@ -327,17 +327,17 @@ func (r *Radio) UnbindSelected() *Radio {
 
 // BindOptions binds the Radio's Options to the given data binding.
 // Returns the Radio for chaining.
-func (r *Radio) BindOptions(data *binding.ListBinding) *Radio {
+func (r *Radio) BindOptions(data binding.List) *Radio {
 	r.optionBinding = data
 	r.optionNotify = data.AddListenerFunction(func(binding.Binding) {
 		l := data.Length()
 		var options []string
 		for i := 0; i < l; i++ {
-			b, ok := data.Get(i).(*binding.StringBinding)
+			b, ok := data.Get(i).(binding.IString)
 			if ok {
 				// TODO Should individual elements in a slice binding be bound to?
 				//  b.AddListener(func() { })
-				options = append(options, b.Get())
+				options = append(options, b.GetString())
 			}
 		}
 		r.Options = options
@@ -350,7 +350,7 @@ func (r *Radio) BindOptions(data *binding.ListBinding) *Radio {
 // Returns the Radio for chaining.
 func (r *Radio) UnbindOptions() *Radio {
 	r.optionBinding.DeleteListener(r.optionNotify)
-	r.optionBinding = nil
+	r.optionBinding = binding.List{}
 	r.optionNotify = nil
 	return r
 }

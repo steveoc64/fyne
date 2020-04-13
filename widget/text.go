@@ -148,6 +148,9 @@ func (t *textProvider) insertAt(pos int, runes []rune) {
 // deleteFromTo removes the text between the specified positions
 func (t *textProvider) deleteFromTo(lowBound int, highBound int) []rune {
 	deleted := make([]rune, highBound-lowBound)
+	if len(t.buffer) < highBound {
+		highBound = len(t.buffer)
+	}
 	copy(deleted, t.buffer[lowBound:highBound])
 	t.buffer = append(t.buffer[:lowBound], t.buffer[highBound:]...)
 	t.updateRowBounds()

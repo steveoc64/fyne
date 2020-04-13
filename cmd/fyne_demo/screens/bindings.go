@@ -20,10 +20,10 @@ func BindingsScreen() fyne.CanvasObject {
 	// TODO tree - map[string][]string
 
 	// Button <-> ProgressBar <-> Button
-	goBool := &binding.BoolBinding{}
-	goFloat64 := &binding.Float64Binding{}
-	goString := &binding.StringBinding{}
-	goResource := &binding.ResourceBinding{}
+	goBool := &binding.Bool{}
+	goFloat64 := &binding.Float64{}
+	goString := &binding.String{}
+	goResource := &binding.Resource{}
 
 	goLeftButton := (&widget.Button{}).BindTapped(goBool).BindText(goString).BindIcon(goResource)
 	goRightButton := (&widget.Button{}).BindTapped(goBool).BindText(goString).BindIcon(goResource)

@@ -18,7 +18,7 @@ type Label struct {
 
 	provider textProvider
 
-	textBinding *binding.StringBinding
+	textBinding binding.IString
 	textNotify  *binding.NotifyFunction
 }
 
@@ -102,7 +102,7 @@ func (l *Label) MinSize() fyne.Size {
 
 // BindText binds the Label's Text to the given data binding.
 // Returns the Label for chaining.
-func (l *Label) BindText(data *binding.StringBinding) *Label {
+func (l *Label) BindText(data binding.IString) *Label {
 	l.textBinding = data
 	l.textNotify = data.AddStringListener(l.SetText)
 	return l

@@ -51,7 +51,7 @@ type Icon struct {
 
 	Resource fyne.Resource // The resource for this icon
 
-	resourceBinding *binding.ResourceBinding
+	resourceBinding binding.IResource
 	resourceNotify  *binding.NotifyFunction
 }
 
@@ -77,7 +77,7 @@ func (i *Icon) CreateRenderer() fyne.WidgetRenderer {
 
 // BindResource binds the Icon's Resource to the given data binding.
 // Returns the Icon for chaining.
-func (i *Icon) BindResource(data *binding.ResourceBinding) *Icon {
+func (i *Icon) BindResource(data binding.IResource) *Icon {
 	i.resourceBinding = data
 	i.resourceNotify = data.AddResourceListener(i.SetResource)
 	return i

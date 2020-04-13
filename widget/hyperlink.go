@@ -22,8 +22,8 @@ type Hyperlink struct {
 
 	provider textProvider
 
-	textBinding *binding.StringBinding
-	urlBinding  *binding.URLBinding
+	textBinding binding.IString
+	urlBinding  binding.IURL
 	textNotify  *binding.NotifyFunction
 	urlNotify   *binding.NotifyFunction
 }
@@ -131,7 +131,7 @@ func (hl *Hyperlink) MinSize() fyne.Size {
 
 // BindText binds the Hyperlink's Text to the given data binding.
 // Returns the Hyperlink for chaining.
-func (hl *Hyperlink) BindText(data *binding.StringBinding) *Hyperlink {
+func (hl *Hyperlink) BindText(data binding.IString) *Hyperlink {
 	hl.textBinding = data
 	hl.textNotify = data.AddStringListener(hl.SetText)
 	return hl
@@ -148,7 +148,7 @@ func (hl *Hyperlink) UnbindText() *Hyperlink {
 
 // BindURL binds the Hyperlink's URL to the given data binding.
 // Returns the Hyperlink for chaining.
-func (hl *Hyperlink) BindURL(data *binding.URLBinding) *Hyperlink {
+func (hl *Hyperlink) BindURL(data binding.IURL) *Hyperlink {
 	hl.urlBinding = data
 	hl.urlNotify = data.AddURLListener(hl.SetURL)
 	return hl

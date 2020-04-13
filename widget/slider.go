@@ -32,7 +32,7 @@ type Slider struct {
 	Orientation Orientation
 	OnChanged   func(float64)
 
-	maxBinding, minBinding, stepBinding, valueBinding *binding.Float64Binding
+	maxBinding, minBinding, stepBinding, valueBinding binding.IFloat64
 	maxNotify, minNotify, stepNotify, valueNotify     *binding.NotifyFunction
 }
 
@@ -117,7 +117,7 @@ func (s *Slider) SetValue(value float64) {
 	s.Value = value
 
 	if s.valueBinding != nil {
-		s.valueBinding.Set(s.Value)
+		s.valueBinding.SetFloat64(s.Value)
 	}
 
 	if s.OnChanged != nil {
@@ -182,7 +182,7 @@ func (s *Slider) CreateRenderer() fyne.WidgetRenderer {
 
 // BindMin binds the Slider's Min to the given data binding.
 // Returns the Slider for chaining.
-func (s *Slider) BindMin(data *binding.Float64Binding) *Slider {
+func (s *Slider) BindMin(data binding.IFloat64) *Slider {
 	s.minBinding = data
 	s.minNotify = data.AddFloat64Listener(s.SetMin)
 	return s
@@ -199,7 +199,7 @@ func (s *Slider) UnbindMin() *Slider {
 
 // BindMax binds the Slider's Max to the given data binding.
 // Returns the Slider for chaining.
-func (s *Slider) BindMax(data *binding.Float64Binding) *Slider {
+func (s *Slider) BindMax(data binding.IFloat64) *Slider {
 	s.maxBinding = data
 	s.maxNotify = data.AddFloat64Listener(s.SetMax)
 	return s
@@ -216,7 +216,7 @@ func (s *Slider) UnbindMax() *Slider {
 
 // BindStep binds the Slider's Step to the given data binding.
 // Returns the Slider for chaining.
-func (s *Slider) BindStep(data *binding.Float64Binding) *Slider {
+func (s *Slider) BindStep(data binding.IFloat64) *Slider {
 	s.stepBinding = data
 	s.stepNotify = data.AddFloat64Listener(s.SetStep)
 	return s
@@ -233,7 +233,7 @@ func (s *Slider) UnbindStep() *Slider {
 
 // BindValue binds the Slider's Value to the given data binding.
 // Returns the Slider for chaining.
-func (s *Slider) BindValue(data *binding.Float64Binding) *Slider {
+func (s *Slider) BindValue(data binding.IFloat64) *Slider {
 	s.valueBinding = data
 	s.valueNotify = data.AddFloat64Listener(s.SetValue)
 	return s

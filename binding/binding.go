@@ -1,23 +1,35 @@
 package binding
 
+// go:generate go run gen.go
+
 import "sync"
 
 // Binding is the base interface of the Data Binding API.
 type Binding interface {
+	Get() string
+	Set(string)
 	AddListener(Notifiable)
 	DeleteListener(Notifiable)
 }
 
-// ItemBinding implements a data binding for a single item.
-type ItemBinding struct {
+// Item implements a data binding for a single item.
+type Item struct {
 	Binding
 	sync.RWMutex
 	listeners []Notifiable // TODO maybe a map[Notifiable]bool would be quicker, especially for DeleteListener?
 }
 
+// Get is a noop to implement Binding
+func (b *Item) Get() string {
+	return ""
+}
+
+// Set is a noop to implement Binding
+func (b *Item) Set(str string) {}
+
 // AddListenerFunction adds the given function as a listener to the binding.
 // The function is wrapped in the returned NotifyFunction which can be passed to DeleteListener.
-func (b *ItemBinding) AddListenerFunction(listener func(Binding)) *NotifyFunction {
+func (b *Item) AddListenerFunction(listener func(Binding)) *NotifyFunction {
 	n := &NotifyFunction{
 		F: listener,
 	}
@@ -26,14 +38,14 @@ func (b *ItemBinding) AddListenerFunction(listener func(Binding)) *NotifyFunctio
 }
 
 // AddListener adds the given listener to the binding.
-func (b *ItemBinding) AddListener(listener Notifiable) {
+func (b *Item) AddListener(listener Notifiable) {
 	b.Lock()
 	defer b.Unlock()
 	b.listeners = append(b.listeners, listener)
 }
 
 // DeleteListener removes the given listener from the binding.
-func (b *ItemBinding) DeleteListener(listener Notifiable) {
+func (b *Item) DeleteListener(listener Notifiable) {
 	b.Lock()
 	defer b.Unlock()
 	var listeners []Notifiable
@@ -45,7 +57,7 @@ func (b *ItemBinding) DeleteListener(listener Notifiable) {
 	b.listeners = listeners
 }
 
-func (b *ItemBinding) notify() {
+func (b *Item) notify() {
 	b.RLock()
 	defer b.RUnlock()
 	for _, l := range b.listeners {
@@ -53,30 +65,30 @@ func (b *ItemBinding) notify() {
 	}
 }
 
-// ListBinding implements a data binding for a list of bindings.
-type ListBinding struct {
-	ItemBinding
+// List implements a data binding for a list of bindings.
+type List struct {
+	Item
 	values []Binding
 }
 
 // Length returns the length of the bound list.
-func (b *ListBinding) Length() int {
+func (b *List) Length() int {
 	return len(b.values)
 }
 
 // Get returns the binding at the given index.
-func (b *ListBinding) Get(index int) Binding {
+func (b *List) Get(index int) Binding {
 	return b.values[index]
 }
 
 // Append adds the given binding(s) to the list.
-func (b *ListBinding) Append(data ...Binding) {
+func (b *List) Append(data ...Binding) {
 	b.values = append(b.values, data...)
 	b.notify()
 }
 
 // Set puts the given binding into the list at the given index.
-func (b *ListBinding) Set(index int, data Binding) {
+func (b *List) Set(index int, data Binding) {
 	old := b.values[index]
 	if old == data {
 		return
@@ -85,25 +97,25 @@ func (b *ListBinding) Set(index int, data Binding) {
 	b.notify()
 }
 
-// MapBinding implements a data binding for a map string to binding.
-type MapBinding struct {
-	ItemBinding
+// Map implements a data binding for a map string to binding.
+type Map struct {
+	Item
 	values map[string]Binding
 }
 
 // Length returns the length of the bound map.
-func (b *MapBinding) Length() int {
+func (b *Map) Length() int {
 	return len(b.values)
 }
 
 // Get returns the binding for the given key.
-func (b *MapBinding) Get(key string) (Binding, bool) {
+func (b *Map) Get(key string) (Binding, bool) {
 	v, ok := b.values[key]
 	return v, ok
 }
 
 // Set puts the given binding into the map at the given key.
-func (b *MapBinding) Set(key string, data Binding) {
+func (b *Map) Set(key string, data Binding) {
 	old, ok := b.values[key]
 	if ok && old == data {
 		return

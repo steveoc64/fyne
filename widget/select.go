@@ -93,8 +93,8 @@ type Select struct {
 	hovered bool
 	popUp   *PopUp
 
-	selectedBinding *binding.StringBinding
-	optionBinding   *binding.ListBinding
+	selectedBinding binding.IString
+	optionBinding   binding.List
 	selectedNotify  *binding.NotifyFunction
 	optionNotify    *binding.NotifyFunction
 }
@@ -219,7 +219,7 @@ func (s *Select) updateSelected(text string) {
 	s.Selected = text
 
 	if s.selectedBinding != nil {
-		s.selectedBinding.Set(s.Selected)
+		s.selectedBinding.SetString(s.Selected)
 	}
 
 	if s.OnChanged != nil {
@@ -231,7 +231,7 @@ func (s *Select) updateSelected(text string) {
 
 // BindSelected binds the Select's Selected Option to the given data binding.
 // Returns the Select for chaining.
-func (s *Select) BindSelected(data *binding.StringBinding) *Select {
+func (s *Select) BindSelected(data binding.IString) *Select {
 	s.selectedBinding = data
 	s.selectedNotify = data.AddStringListener(s.SetSelected)
 	return s
@@ -248,17 +248,17 @@ func (s *Select) UnbindSelected() *Select {
 
 // BindOptions binds the Select's Options to the given data binding.
 // Returns the Select for chaining.
-func (s *Select) BindOptions(data *binding.ListBinding) *Select {
+func (s *Select) BindOptions(data binding.List) *Select {
 	s.optionBinding = data
 	s.optionNotify = data.AddListenerFunction(func(binding.Binding) {
 		l := data.Length()
 		var options []string
 		for i := 0; i < l; i++ {
-			b, ok := data.Get(i).(*binding.StringBinding)
+			b, ok := data.Get(i).(binding.IString)
 			if ok {
 				// TODO Should individual elements in a slice binding be bound to?
 				//  b.AddListener(func() { })
-				options = append(options, b.Get())
+				options = append(options, b.GetString())
 			}
 		}
 		s.Options = options
@@ -271,7 +271,7 @@ func (s *Select) BindOptions(data *binding.ListBinding) *Select {
 // Returns the Select for chaining.
 func (s *Select) UnbindOptions() *Select {
 	s.optionBinding.DeleteListener(s.optionNotify)
-	s.optionBinding = nil
+	s.optionBinding = binding.List{}
 	s.optionNotify = nil
 	return s
 }
