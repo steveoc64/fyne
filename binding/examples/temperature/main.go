@@ -43,7 +43,7 @@ func main() {
 		widget.NewLabel("Absolute Temp as Int"),
 		widget.NewEntry().
 			Bind(temperature).
-			Handler(binding.Numberf("%.0f", temperature)),
+			Handler(binding.Numberf("%d", temperature)),
 		widget.NewLabel("Kelvin Raw Value"),
 		widget.NewEntry().Bind(temperature),
 		widget.NewLabel("Kelvin 2 Decimals"),
@@ -57,7 +57,7 @@ func main() {
 		widget.NewLabel("Celcius 2 Decimals"),
 		widget.NewEntry().
 			Bind(temperature).
-			Handler(binding.Numberf("%.2f", temperature)),
+			Handler(binding.Numberf("%.2f", celcius)),
 		widget.NewLabel("Cost in US Dollars"),
 		widget.NewEntry().
 			Bind(temperature).
