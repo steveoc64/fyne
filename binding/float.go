@@ -63,6 +63,9 @@ func Float64Handler(h Handler) WrapHandler {
 		h,
 		reflect.Float64,
 		func(v reflect.Value) reflect.Value {
+			if v.Kind() == reflect.Float64 {
+				return v
+			}
 			// v is anything, return float
 			str := fmt.Sprintf("%v", v)
 			f, _ := strconv.ParseFloat(str, 64)
@@ -73,6 +76,8 @@ func Float64Handler(h Handler) WrapHandler {
 			switch h.Kind() {
 			case reflect.Float64:
 				return v
+			case reflect.Int64:
+				return reflect.ValueOf(float64(v.Int()))
 			case reflect.String:
 				str := fmt.Sprintf("%v", v)
 				return reflect.ValueOf(str)
