@@ -38,14 +38,18 @@ func main() {
 			return reflect.ValueOf((v.Float()-32.0)/1.8 + KC)
 		},
 	)
-	w := a.NewWindow("Temp Converter")
+	w := a.NewWindow("Mega Temp Converter")
 	w.SetContent(widget.NewVBox(
-		widget.NewLabel("Kelvin Raw"),
+		widget.NewLabel("Absolute Temp as Int"),
+		widget.NewEntry().
+			Bind(temperature).
+			Handler(binding.Numberf("%.0f", temperature)),
+		widget.NewLabel("Kelvin Raw Value"),
 		widget.NewEntry().Bind(temperature),
 		widget.NewLabel("Kelvin 2 Decimals"),
 		widget.NewEntry().
 			Bind(temperature).
-			Handler(binding.FloatString(temperature, "%.2f")),
+			Handler(binding.Numberf("%.2f", temperature)),
 		widget.NewLabel("Celcius Raw"),
 		widget.NewEntry().
 			Bind(temperature).
@@ -53,7 +57,7 @@ func main() {
 		widget.NewLabel("Celcius 2 Decimals"),
 		widget.NewEntry().
 			Bind(temperature).
-			Handler(binding.FloatString(temperature, "%.02f")),
+			Handler(binding.Numberf("%.2f", temperature)),
 		widget.NewLabel("Cost in US Dollars"),
 		widget.NewEntry().
 			Bind(temperature).
@@ -65,7 +69,7 @@ func main() {
 		widget.NewLabel("Farenheit 4 Full decimals"),
 		widget.NewEntry().
 			Bind(temperature).
-			Handler(binding.FloatString(farenheit, "%.04f")),
+			Handler(binding.Numberf("%.04f", farenheit)),
 		widget.NewLabel("Temperature range 0-10,000k"),
 		widget.NewSlider(0, 10000).Bind(temperature),
 	))

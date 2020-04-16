@@ -86,6 +86,7 @@ func StringHandler(h Handler) WrapHandler {
 
 // Currency handler provides a filter to convert numeric data
 // into currency format (2 fixed decimals)
+// with optional leading char formatting and exchange rate modifier
 func Currency(h Handler, leading string, xchangeRate float64) WrapHandler {
 	if xchangeRate == 0.0 {
 		xchangeRate = 1.0
@@ -95,22 +96,17 @@ func Currency(h Handler, leading string, xchangeRate float64) WrapHandler {
 		reflect.String,
 		func(v reflect.Value) reflect.Value {
 			str := fmt.Sprintf("%v", v)
-			println("got", str)
 			f, _ := strconv.ParseFloat(str, 64)
-			println("parsed", f)
 			str = fmt.Sprintf("%s%.02f", leading, f/xchangeRate)
-			println("bestrung", str)
 			return reflect.ValueOf(str)
 		},
 		func(v reflect.Value) reflect.Value {
 			// v is string, convert it into the target type
 			// we need to strip the prefix off it first !
 			str := v.String()
-			println("setting from", str)
 			if strings.HasPrefix(str, leading) {
 				str = str[len(leading):]
 			}
-			println("stripped to", str)
 			switch h.Kind() {
 			case reflect.String:
 				return reflect.ValueOf(str)
@@ -125,23 +121,31 @@ func Currency(h Handler, leading string, xchangeRate float64) WrapHandler {
 		})
 }
 
-// FloatString with custom format param
-func FloatString(h Handler, format string) WrapHandler {
+// Numberf with custom formatter for numeric values
+// normally the Handler would be the first param, but in this
+// case end result flows naturally like a printf statement
+func Numberf(format string, h Handler) WrapHandler {
 	return NewHandler(
 		h,
 		reflect.String,
 		func(v reflect.Value) reflect.Value {
 			str := fmt.Sprintf("%v", v)
 			f, _ := strconv.ParseFloat(str, 64)
-			str = fmt.Sprintf(format, f)
+			if strings.Contains(format, "%d") || strings.HasSuffix(format, "d") {
+				str = fmt.Sprintf(format, int64(f))
+			} else {
+				str = fmt.Sprintf(format, f)
+			}
 			return reflect.ValueOf(str)
 		},
 		func(v reflect.Value) reflect.Value {
 			// v is string, convert it into the target type
 			switch h.Kind() {
-			// massive set of cases .... take a string, convert to kind
 			case reflect.String:
 				return v
+			case reflect.Int64:
+				f, _ := strconv.ParseFloat(v.String(), 64)
+				return reflect.ValueOf(int64(f))
 			case reflect.Float64:
 				f, _ := strconv.ParseFloat(v.String(), 64)
 				return reflect.ValueOf(f)
