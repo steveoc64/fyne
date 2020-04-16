@@ -3,11 +3,13 @@ package widget
 import (
 	"image/color"
 	"math"
+	"reflect"
 	"strings"
 	"sync"
 	"unicode"
 
 	"fyne.io/fyne"
+	"fyne.io/fyne/binding"
 	"fyne.io/fyne/canvas"
 	"fyne.io/fyne/driver/desktop"
 	"fyne.io/fyne/theme"
@@ -263,10 +265,25 @@ type Entry struct {
 
 	// ActionItem is a small item which is displayed at the outer right of the entry (like a password revealer)
 	ActionItem fyne.CanvasObject
+
+	binding *binding.Binding
 }
 
 // SetText manually sets the text of the Entry to the given text value.
 func (e *Entry) SetText(text string) {
+	if e.Text == text {
+		return
+	}
+	e.setText(text)
+	if e.binding != nil {
+		e.binding.Handler.Set(reflect.ValueOf(text))
+	}
+}
+
+func (e *Entry) setText(text string) {
+	if e.Text == text {
+		return
+	}
 	e.textProvider().SetText(text)
 	e.updateText(text)
 
@@ -333,8 +350,13 @@ func (e *Entry) updateText(text string) {
 	e.Lock()
 	e.Text = text
 	e.Unlock()
-	if changed && e.OnChanged != nil {
-		e.OnChanged(text)
+	if changed {
+		if e.binding != nil {
+			e.binding.Handler.Set(reflect.ValueOf(text))
+		}
+		if e.OnChanged != nil {
+			e.OnChanged(text)
+		}
 	}
 
 	e.Refresh()
@@ -1136,6 +1158,49 @@ func NewEntry() *Entry {
 	e := &Entry{}
 	e.ExtendBaseWidget(e)
 	return e
+}
+
+// Bind creates a new Binding between this widget
+// and the Bindable passed in.
+// The Bindable's base Handler is applied, but can
+// be customised using the widget.Handler() call below
+func (e *Entry) Bind(value binding.Bindable) *Entry {
+	b := binding.NewBinding(value, e, value)
+	if b.Handler.Kind() != reflect.String {
+		b.Handler = binding.StringHandler(b.Handler)
+	}
+	e.binding = b
+	return e
+}
+
+// Handler (optionally) sets the handler for this binding
+func (e *Entry) Handler(h binding.Handler) *Entry {
+	if e.binding != nil {
+		if h.Kind() != reflect.String {
+			h = binding.StringHandler(h)
+		}
+		e.binding.Handler = h
+	}
+	return e
+}
+
+// Unbind disconnects the widget and puts the binding out for garbage collection
+func (e *Entry) Unbind() {
+	if e.binding != nil {
+		e.binding.Data.DeleteListener(e.binding)
+		e.binding = nil
+	}
+}
+
+func (e *Entry) Notify(b *binding.Binding) {
+	if e == nil {
+		// is actually possible, so trap it here
+		return
+	}
+	// we can get the data from the binding
+	// we know that the handler always returns a string value
+	value := b.Handler.Get().String()
+	e.setText(value)
 }
 
 // NewMultiLineEntry creates a new entry that allows multiple lines
