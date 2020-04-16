@@ -1185,11 +1185,12 @@ func (e *Entry) Handler(h binding.Handler) *Entry {
 }
 
 // Unbind disconnects the widget and puts the binding out for garbage collection
-func (e *Entry) Unbind() {
+func (e *Entry) Unbind() *Entry {
 	if e.binding != nil {
 		e.binding.Data.DeleteListener(e.binding)
 		e.binding = nil
 	}
+	return e
 }
 
 func (e *Entry) Notify(b *binding.Binding) {

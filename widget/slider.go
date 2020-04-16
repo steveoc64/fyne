@@ -2,8 +2,10 @@ package widget
 
 import (
 	"math"
+	"reflect"
 
 	"fyne.io/fyne"
+	"fyne.io/fyne/binding"
 	"fyne.io/fyne/canvas"
 	"fyne.io/fyne/theme"
 )
@@ -30,6 +32,8 @@ type Slider struct {
 
 	Orientation Orientation
 	OnChanged   func(float64)
+
+	binding *binding.Binding
 }
 
 // NewSlider returns a basic slider.
@@ -45,6 +49,47 @@ func NewSlider(min, max float64) *Slider {
 	return slider
 }
 
+func (s *Slider) Bind(value binding.Bindable) *Slider {
+	b := binding.NewBinding(value, s, value)
+	if b.Handler.Kind() != reflect.Float64 {
+		b.Handler = binding.Float64Handler(b.Handler)
+	}
+	s.binding = b
+	return s
+}
+
+// Handler (optionally) sets the handler for this binding
+func (s *Slider) Handler(h binding.Handler) *Slider {
+	if s.binding != nil {
+		if h.Kind() != reflect.Float64 {
+			h = binding.Float64Handler(h)
+		}
+		s.binding.Handler = h
+	}
+	return s
+}
+
+// Unbind disconnects the widget and puts the binding out for garbage collection
+func (s *Slider) Unbind() *Slider {
+	if s.binding != nil {
+		s.binding.Data.DeleteListener(s.binding)
+		s.binding = nil
+	}
+	return s
+}
+
+func (s *Slider) Notify(b *binding.Binding) {
+	if s == nil {
+		// is actually possible, so trap it here
+		return
+	}
+	// we can get the data from the binding
+	// we know that the handler always returns a float value
+	value := b.Handler.Get().Float()
+	s.updateValue(s.valueToRatio(value))
+	s.Refresh()
+}
+
 // DragEnd function.
 func (s *Slider) DragEnd() {
 }
@@ -56,9 +101,20 @@ func (s *Slider) Dragged(e *fyne.DragEvent) {
 	s.updateValue(ratio)
 	s.Refresh()
 
+	if s.binding != nil {
+		s.binding.Handler.Set(reflect.ValueOf(s.ratioToValue(ratio)))
+	}
 	if s.OnChanged != nil {
 		s.OnChanged(s.Value)
 	}
+}
+
+func (s *Slider) valueToRatio(value float64) float64 {
+	return (value - s.Min) / (s.Max - s.Min)
+}
+
+func (s *Slider) ratioToValue(ratio float64) float64 {
+	return ratio * (s.Max - s.Min)
 }
 
 func (s *Slider) buttonDiameter() int {

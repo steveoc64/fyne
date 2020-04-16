@@ -63,7 +63,58 @@ func StringHandler(h Handler) WrapHandler {
 		reflect.String,
 		func(v reflect.Value) reflect.Value {
 			// v is anything, return string, which is easy
-			str := fmt.Sprintf("%v", v.String())
+			str := fmt.Sprintf("%v", v)
+			return reflect.ValueOf(str)
+		},
+		func(v reflect.Value) reflect.Value {
+			// v is string, convert it into the target type
+			switch h.Kind() {
+			// massive set of cases .... take a string, convert to kind
+			case reflect.String:
+				return v
+			case reflect.Float64:
+				f, _ := strconv.ParseFloat(v.String(), 64)
+				return reflect.ValueOf(f)
+			}
+			return reflect.ValueOf("")
+		})
+}
+
+// Currency handler provides a filter to convert numeric data
+// into currency format (2 fixed decimals)
+func Currency(h Handler) WrapHandler {
+	return NewHandler(
+		h,
+		reflect.String,
+		func(v reflect.Value) reflect.Value {
+			str := fmt.Sprintf("%v", v)
+			f, _ := strconv.ParseFloat(str, 64)
+			str = fmt.Sprintf("%.02f", f)
+			return reflect.ValueOf(str)
+		},
+		func(v reflect.Value) reflect.Value {
+			// v is string, convert it into the target type
+			switch h.Kind() {
+			// massive set of cases .... take a string, convert to kind
+			case reflect.String:
+				return v
+			case reflect.Float64:
+				f, _ := strconv.ParseFloat(v.String(), 64)
+				return reflect.ValueOf(f)
+			}
+			return reflect.ValueOf("")
+		})
+}
+
+// FloatString with custom format param
+func FloatString(h Handler, format string) WrapHandler {
+	return NewHandler(
+		h,
+		reflect.String,
+		func(v reflect.Value) reflect.Value {
+			str := fmt.Sprintf("%v", v)
+			f, _ := strconv.ParseFloat(str, 64)
+			str = fmt.Sprintf(format, f)
 			return reflect.ValueOf(str)
 		},
 		func(v reflect.Value) reflect.Value {
