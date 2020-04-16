@@ -36,7 +36,7 @@ func (s *String) Set(v reflect.Value) {
 	if s == nil {
 		return
 	}
-	s.value = v.Elem().String()
+	s.value = v.String()
 	s.Update()
 }
 
@@ -151,5 +151,20 @@ func Numberf(format string, h Handler) WrapHandler {
 				return reflect.ValueOf(f)
 			}
 			return reflect.ValueOf("")
+		})
+}
+
+// Printf is a read only filter to format strings
+func Printf(format string, h Handler) WrapHandler {
+	return NewHandler(
+		h,
+		reflect.String,
+		func(v reflect.Value) reflect.Value {
+			// pass it straight through whatever the types are
+			return reflect.ValueOf(fmt.Sprintf(format, v))
+		},
+		func(v reflect.Value) reflect.Value {
+			// set on printf is a noop
+			return reflect.Zero(v.Type())
 		})
 }

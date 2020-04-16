@@ -2,8 +2,10 @@ package widget
 
 import (
 	"image/color"
+	"reflect"
 
 	"fyne.io/fyne"
+	"fyne.io/fyne/binding"
 	"fyne.io/fyne/theme"
 )
 
@@ -15,6 +17,8 @@ type Label struct {
 	Wrapping  fyne.TextWrap  // The wrapping of the Text
 	TextStyle fyne.TextStyle // The style of the label text
 	provider  textProvider
+
+	binding *binding.Binding
 }
 
 // NewLabel creates a new label widget with the set text content
@@ -33,6 +37,47 @@ func NewLabelWithStyle(text string, alignment fyne.TextAlign, style fyne.TextSty
 	return l
 }
 
+// Bind creates a new Binding between this widget and the bindable
+func (l *Label) Bind(value binding.Bindable) *Label {
+	b := binding.NewBinding(value, l, value)
+	if b.Handler.Kind() != reflect.String {
+		b.Handler = binding.StringHandler(b.Handler)
+	}
+	l.binding = b
+	return l
+}
+
+// Handler (optionally) sets the handler for this binding
+func (l *Label) Handler(h binding.Handler) *Label {
+	if l.binding != nil {
+		if h.Kind() != reflect.String {
+			h = binding.StringHandler(h)
+		}
+		l.binding.Handler = h
+	}
+	return l
+}
+
+// Unbind disconnects the widget and puts the binding out for garbage collection
+func (l *Label) Unbind() *Label {
+	if l.binding != nil {
+		l.binding.Data.DeleteListener(l.binding)
+		l.binding = nil
+	}
+	return l
+}
+
+func (l *Label) Notify(b *binding.Binding) {
+	if l == nil {
+		// is actually possible, so trap it here
+		return
+	}
+	// we can get the data from the binding
+	// we know that the handler always returns a string value
+	value := b.Handler.Get().String()
+	l.SetText(value)
+}
+
 // Refresh checks if the text content should be updated then refreshes the graphical context
 func (l *Label) Refresh() {
 	if l.Text != string(l.provider.buffer) {
@@ -44,6 +89,11 @@ func (l *Label) Refresh() {
 
 // SetText sets the text of the label
 func (l *Label) SetText(text string) {
+	if l.Text != text {
+		if l.binding != nil {
+			l.binding.Handler.Set(reflect.ValueOf(text))
+		}
+	}
 	l.Text = text
 	l.provider.SetText(text) // calls refresh
 }

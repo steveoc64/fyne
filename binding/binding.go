@@ -14,5 +14,9 @@ type Binding struct {
 func NewBinding(o Observable, e Notifiable, h Handler) *Binding {
 	b := &Binding{o, e, h}
 	o.AddListener(b)
+	// kick off an update on the widget to synch it with the data
+	if e != nil {
+		go e.Notify(b)
+	}
 	return b
 }

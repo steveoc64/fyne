@@ -27,5 +27,9 @@ func (w WrapHandler) Get() reflect.Value {
 }
 
 func (w WrapHandler) Set(v reflect.Value) {
+	if w.set == nil {
+		// is a read only wrapper, cannot set data on this pipe
+		return
+	}
 	w.parent.Set(w.set(v))
 }

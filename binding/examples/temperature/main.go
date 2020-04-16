@@ -12,14 +12,20 @@ import (
 
 const KC = 273.15
 
-func main() {
-	a := app.New()
+// Temperature is a reusable data item that tracks temperature
+// in kelvin, and provides custom Celcius and Farenheit handlers
+type Temperature struct {
+	*binding.Float64
+	Celcius   binding.Handler
+	Farenheit binding.Handler
+}
 
-	temperature := binding.NewFloat64(0.0)
+func NewTemperature(value float64) *Temperature {
+	t := &Temperature{
+		Float64: binding.NewFloat64(value),
+	}
 
-	celcius := binding.NewHandler(
-		temperature,
-		reflect.Float64,
+	t.Celcius = binding.NewHandler(t, reflect.Float64,
 		func(v reflect.Value) reflect.Value {
 			return reflect.ValueOf(v.Float() - KC)
 		},
@@ -27,10 +33,7 @@ func main() {
 			return reflect.ValueOf(v.Float() + KC)
 		},
 	)
-
-	farenheit := binding.NewHandler(
-		temperature,
-		reflect.Float64,
+	t.Farenheit = binding.NewHandler(t, reflect.Float64,
 		func(v reflect.Value) reflect.Value {
 			return reflect.ValueOf(((v.Float() - KC) * 1.8) + 32.0)
 		},
@@ -38,40 +41,53 @@ func main() {
 			return reflect.ValueOf((v.Float()-32.0)/1.8 + KC)
 		},
 	)
+	return t
+}
+
+func main() {
+	a := app.New()
+
+	t := NewTemperature(0.0)
+
 	w := a.NewWindow("Mega Temp Converter")
 	w.SetContent(widget.NewVBox(
 		widget.NewLabel("Absolute Temp as Int"),
 		widget.NewEntry().
-			Bind(temperature).
-			Handler(binding.Numberf("%d", temperature)),
+			Bind(t).
+			Handler(binding.Numberf("%d", t)),
 		widget.NewLabel("Kelvin Raw Value"),
-		widget.NewEntry().Bind(temperature),
+		widget.NewEntry().Bind(t),
 		widget.NewLabel("Kelvin 2 Decimals"),
 		widget.NewEntry().
-			Bind(temperature).
-			Handler(binding.Numberf("%.2f", temperature)),
+			Bind(t).
+			Handler(binding.Numberf("%.2f", t)),
 		widget.NewLabel("Celcius Raw"),
 		widget.NewEntry().
-			Bind(temperature).
-			Handler(celcius),
+			Bind(t).
+			Handler(t.Celcius),
 		widget.NewLabel("Celcius 2 Decimals"),
 		widget.NewEntry().
-			Bind(temperature).
-			Handler(binding.Numberf("%.2f", celcius)),
-		widget.NewLabel("Cost in US Dollars"),
-		widget.NewEntry().
-			Bind(temperature).
-			Handler(binding.Currency(celcius, "$", 1.0)),
-		widget.NewLabel("Cost in AUD$"),
-		widget.NewEntry().
-			Bind(temperature).
-			Handler(binding.Currency(celcius, "AUD $ ", 0.64)),
+			Bind(t).
+			Handler(binding.Numberf("%.2f", t.Celcius)),
 		widget.NewLabel("Farenheit 4 Full decimals"),
 		widget.NewEntry().
-			Bind(temperature).
-			Handler(binding.Numberf("%.04f", farenheit)),
+			Bind(t).
+			Handler(binding.Numberf("%.04f", t.Farenheit)),
 		widget.NewLabel("Temperature range 0-10,000k"),
-		widget.NewSlider(0, 10000).Bind(temperature),
+		widget.NewSlider(0, 10000).Bind(t),
 	))
-	w.ShowAndRun()
+	w.Show()
+
+	wc := a.NewWindow("Temp Cost Calculator")
+	wc.SetContent(widget.NewVBox(
+		widget.NewLabel("Cost in US Dollars"),
+		widget.NewEntry().
+			Bind(t).
+			Handler(binding.Currency(t.Celcius, "$", 1.0)),
+		widget.NewLabel("Cost in AUD$"),
+		widget.NewEntry().
+			Bind(t).
+			Handler(binding.Currency(t.Celcius, "AUD $ ", 0.64)),
+	))
+	wc.ShowAndRun()
 }
