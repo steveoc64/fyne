@@ -237,7 +237,7 @@ type Entry struct {
 	shortcut    fyne.ShortcutHandler
 	Text        string
 	PlaceHolder string
-	OnChanged   func(string) `json:"-"`
+	onChanged   func(string) `json:"-"`
 	Password    bool
 	ReadOnly    bool // Deprecated: Use Disable() instead
 	MultiLine   bool
@@ -274,18 +274,15 @@ func (e *Entry) SetText(text string) {
 	if e.Text == text {
 		return
 	}
-	e.setText(text)
-	if e.binding != nil {
-		e.binding.Handler.Set(reflect.ValueOf(text))
-	}
+	e.setText(text, true)
 }
 
-func (e *Entry) setText(text string) {
+func (e *Entry) setText(text string, updateBinding bool) {
 	if e.Text == text {
 		return
 	}
 	e.textProvider().SetText(text)
-	e.updateText(text)
+	e.updateText(text, updateBinding)
 
 	if text == "" {
 		e.Lock()
@@ -345,21 +342,27 @@ func (e *Entry) Hide() {
 }
 
 // updateText updates the internal text to the given value
-func (e *Entry) updateText(text string) {
+func (e *Entry) updateText(text string, updateBinding bool) {
 	changed := e.Text != text
 	e.Lock()
 	e.Text = text
 	e.Unlock()
 	if changed {
-		if e.binding != nil {
+		if updateBinding && e.binding != nil {
 			e.binding.Handler.Set(reflect.ValueOf(text))
 		}
-		if e.OnChanged != nil {
-			e.OnChanged(text)
+		if e.onChanged != nil {
+			e.onChanged(text)
 		}
 	}
 
 	e.Refresh()
+}
+
+// OnChanged sets the OnChanged handler for this entry widget
+func (e *Entry) OnChanged(f func(string)) *Entry {
+	e.onChanged = f
+	return e
 }
 
 // selection returns the start and end text positions for the selected span of text
@@ -523,7 +526,7 @@ func (e *Entry) pasteFromClipboard(clipboard fyne.Clipboard) {
 		}
 		e.CursorColumn = len(runes) - lastNewlineIndex - 1
 	}
-	e.updateText(provider.String())
+	e.updateText(provider.String(), true)
 	e.Refresh()
 }
 
@@ -743,7 +746,7 @@ func (e *Entry) TypedRune(r rune) {
 	e.Lock()
 	e.CursorRow, e.CursorColumn = e.rowColFromTextPos(pos + len(runes))
 	e.Unlock()
-	e.updateText(provider.String())
+	e.updateText(provider.String(), true)
 	e.Refresh()
 }
 
@@ -789,7 +792,7 @@ func (e *Entry) eraseSelection() {
 	e.CursorRow, e.CursorColumn = e.rowColFromTextPos(posA)
 	e.selectRow, e.selectColumn = e.CursorRow, e.CursorColumn
 	e.Unlock()
-	e.updateText(provider.String())
+	e.updateText(provider.String(), true)
 	e.selecting = false
 }
 
@@ -979,7 +982,7 @@ func (e *Entry) TypedKey(key *fyne.KeyEvent) {
 		return
 	}
 
-	e.updateText(provider.String())
+	e.updateText(provider.String(), true)
 
 	if e.CursorRow == e.selectRow && e.CursorColumn == e.selectColumn {
 		e.selecting = false
@@ -1201,7 +1204,7 @@ func (e *Entry) Notify(b *binding.Binding) {
 	// we can get the data from the binding
 	// we know that the handler always returns a string value
 	value := b.Handler.Get().String()
-	e.setText(value)
+	e.setText(value, false)
 }
 
 // NewMultiLineEntry creates a new entry that allows multiple lines

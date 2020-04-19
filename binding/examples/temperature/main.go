@@ -54,7 +54,10 @@ func main() {
 		widget.NewLabel("Absolute Temp as Int"),
 		widget.NewEntry().
 			Bind(t).
-			Handler(binding.Numberf("%d", t)),
+			Handler(binding.Numberf("%d", t)).
+			OnChanged(func(str string) {
+				println("edit changed to", str)
+			}),
 		widget.NewLabel("Kelvin Raw Value"),
 		widget.NewEntry().Bind(t),
 		widget.NewLabel("Kelvin 2 Decimals"),
