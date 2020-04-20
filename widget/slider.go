@@ -109,6 +109,20 @@ func (s *Slider) Dragged(e *fyne.DragEvent) {
 	}
 }
 
+// SetValue allows external code to set the value in the slider
+func (s *Slider) SetValue(value float64) {
+	ratio := s.valueToRatio(value)
+
+	s.updateValue(ratio)
+	s.Refresh()
+	if s.binding != nil {
+		s.binding.Handler.Set(reflect.ValueOf(ratio))
+	}
+	if s.OnChanged != nil {
+		s.OnChanged(s.Value)
+	}
+}
+
 func (s *Slider) valueToRatio(value float64) float64 {
 	return (value - s.Min) / (s.Max - s.Min)
 }
