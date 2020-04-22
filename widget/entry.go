@@ -1168,7 +1168,7 @@ func NewEntry() *Entry {
 // The Data's base Handler is applied, but can
 // be customised using the widget.Handler() call below
 func (e *Entry) Bind(value binding.Data) *Entry {
-	b := binding.NewBinding(value, e, value)
+	b := binding.Connect(value, e, value)
 	if b.Handler.Kind() != reflect.String {
 		b.Handler = binding.StringHandler(b.Handler)
 	}

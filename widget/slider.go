@@ -50,7 +50,7 @@ func NewSlider(min, max float64) *Slider {
 }
 
 func (s *Slider) Bind(value binding.Data) *Slider {
-	b := binding.NewBinding(value, s, value)
+	b := binding.Connect(value, s, value)
 	if b.Handler.Kind() != reflect.Float64 {
 		b.Handler = binding.Float64Handler(b.Handler)
 	}

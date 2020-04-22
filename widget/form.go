@@ -153,7 +153,7 @@ func (f *Form) Bind(value binding.Data) *Form {
 		// invalid - return
 		return f
 	}
-	b := binding.NewBinding(value, f, value)
+	b := binding.Connect(value, f, value)
 	if b.Handler.Kind() != reflect.Struct {
 		// invalid binding type, do not connect
 		return f

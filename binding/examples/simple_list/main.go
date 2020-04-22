@@ -40,8 +40,8 @@ func (c *Customer) String() string {
 // to a slice of Customer, and manually renders each cell.
 type CustomerListUI struct {
 	*widget.Group
-	customers *binding.Slice
-	binding   *binding.Binding
+	customers  *binding.Slice
+	connection *binding.Binding
 }
 
 // NewCustomerList retuns a new CustomerList UI Element
@@ -54,8 +54,8 @@ func NewCustomerListUI() *CustomerListUI {
 
 func (c *CustomerListUI) Bind(list *binding.Slice) *CustomerListUI {
 	c.customers = list
-	c.binding = binding.NewBinding(list, c, list)
-	list.AddListener(c.binding)
+	c.connection = binding.Connect(list, c, list)
+	list.AddListener(c.connection)
 	return c
 }
 
