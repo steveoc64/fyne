@@ -1,9 +1,6 @@
-package main
-
 // example of a simple list that manages its own content
 // but is bound to a List data type.
-
-// uses a simple form binding to simplify the data editor
+package main
 
 import (
 	"fmt"
@@ -16,11 +13,11 @@ import (
 
 // Customer is a simple set of data against a customer
 type Customer struct {
-	Name           string  `form:"firstname"`
-	Surname        string  `form:"surname"`
-	Address        string  `form:"address"`
-	Phone          string  `form:"phone"`
-	AccountBalance float64 `form:"balance"`
+	Name    string  `form:"firstname"`
+	Surname string  `form:"surname"`
+	Phone   string  `form:"phone"`
+	Address string  `form:"address"`
+	Balance float64 `form:"balance"`
 }
 
 // Clone returns a new clone of the existing customer
@@ -29,13 +26,18 @@ func (c *Customer) Clone() *Customer {
 	return &newCustomer
 }
 
+func (c *Customer) String() string {
+	return fmt.Sprintf("%s %s %s ph: %s, Bal $%.02f",
+		c.Name,
+		c.Surname,
+		c.Address,
+		c.Phone,
+		c.Balance,
+	)
+}
+
 // CustomerList is a simple List type widget that binds
 // to a slice of Customer, and manually renders each cell.
-//
-// We know that there are only a dozen customers in real life
-// so we dont need a super optimized list in this case
-//
-// A manual updating list is good enough for this one
 type CustomerListUI struct {
 	*widget.Group
 	customers *binding.Slice
@@ -76,22 +78,13 @@ func (c *EditorBox) MinSize() fyne.Size {
 	return fyne.NewSize(300, 300)
 }
 
-// Notify tells the customerList that the dimensions of
+// Notify tells the customerListUI that the dimensions of
 // the bound Slice has changed.
-// This simple function merely zaps the existing contents
-// and rebuilds the world using new widgets.
 func (c *CustomerListUI) Notify(b *binding.Binding) {
 	c.Clear()
 	for i := 0; i < c.customers.Len(); i++ {
 		if cust, ok := c.customers.Index(i).(*Customer); ok {
-			str := fmt.Sprintf("%s %s, %s, ph %s, bal: $%.2f",
-				cust.Name,
-				cust.Surname,
-				cust.Address,
-				cust.Phone,
-				cust.AccountBalance,
-			)
-			c.Append(widget.NewLabel(str))
+			c.Append(widget.NewLabel(cust.String()))
 		}
 	}
 }
@@ -106,10 +99,8 @@ func main() {
 	a := app.New()
 
 	// build the UI
-	customerListUI := NewCustomerListUI().Bind(customersData)
 
 	w := a.NewWindow("Customer Editor")
-
 	w.SetContent(widget.NewHBox(
 		NewEditorBox(
 			widget.NewForm(
@@ -117,7 +108,7 @@ func main() {
 				widget.NewFormItem("Surname", widget.NewEntry(), "surname"),
 				widget.NewFormItem("Address", widget.NewEntry(), "address"),
 				widget.NewFormItem("Phone", widget.NewEntry(), "phone"),
-				widget.NewFormItem("Balance", widget.NewSlider(0, 10000), "balance"),
+				widget.NewFormItem("Balance", widget.NewSlider(0, 1000), "balance"),
 			).
 				Bind(binding.NewStruct(editCustomer)).
 				OnSubmit(func() {
@@ -125,20 +116,8 @@ func main() {
 					customersData.Append(editCustomer.Clone())
 					editBinding.SetValue(&Customer{})
 				}),
-			widget.NewButton("Show List", func() {
-				// example of being able to do useful things with the
-				// binding.List outside of widgets and outside of
-				// the data model
-				println("Customer List")
-				println("==============================")
-				for i := 0; i < customersData.Len(); i++ {
-					if c, ok := customersData.Index(i).(*Customer); ok {
-						println(i+1, ":", c.Name, c.Surname, c.Address, c.Phone, c.AccountBalance)
-					}
-				}
-			}),
 		),
-		customerListUI,
-	))
+		NewCustomerListUI().Bind(customersData)),
+	)
 	w.ShowAndRun()
 }
