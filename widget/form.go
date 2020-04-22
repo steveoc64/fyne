@@ -11,7 +11,6 @@ import (
 	"fyne.io/fyne/internal/cache"
 	"fyne.io/fyne/layout"
 	"fyne.io/fyne/theme"
-	"github.com/davecgh/go-spew/spew"
 )
 
 // FormItem provides the details for a row in a form
@@ -34,13 +33,10 @@ type Form struct {
 	BaseWidget
 
 	Items      []*FormItem
-	OnSubmit   func()
-	OnCancel   func()
+	onSubmit   func()
+	onCancel   func()
 	SubmitText string
 	CancelText string
-
-	onSubmit func()
-	onCancel func()
 
 	itemGrid *fyne.Container
 	binding  *binding.Binding
@@ -103,24 +99,27 @@ func (f *Form) CreateRenderer() fyne.WidgetRenderer {
 		f.itemGrid.AddObject(item.Widget)
 	}
 
-	if f.OnCancel == nil && f.OnSubmit == nil {
+	if f.onCancel == nil && f.onSubmit == nil {
 		return cache.Renderer(NewVBox(f.itemGrid))
 	}
 
 	buttons := NewHBox(layout.NewSpacer())
-	if f.OnCancel != nil {
+	if f.onCancel != nil {
 		if f.CancelText == "" {
 			f.CancelText = "Cancel"
 		}
 
-		buttons.Append(NewButtonWithIcon(f.CancelText, theme.CancelIcon(), f.OnCancel))
+		buttons.Append(NewButtonWithIcon(f.CancelText, theme.CancelIcon(), f.onCancel))
 	}
-	if f.OnSubmit != nil {
+	if f.onSubmit != nil {
 		if f.SubmitText == "" {
 			f.SubmitText = "Submit"
 		}
 
-		submitButton := NewButtonWithIcon(f.SubmitText, theme.ConfirmIcon(), f.OnSubmit)
+		submitButton := NewButtonWithIcon(f.SubmitText, theme.ConfirmIcon(), func() {
+			f.FormToBinding()
+			f.onSubmit()
+		})
 		submitButton.Style = PrimaryButton
 		buttons.Append(submitButton)
 	}
@@ -137,14 +136,14 @@ func NewForm(items ...*FormItem) *Form {
 }
 
 // OnSubmit sets an on submit handler for the form
-func (f *Form) OnSubmit(f func()) *Form {
-	f.onSubmit = f
+func (f *Form) OnSubmit(fn func()) *Form {
+	f.onSubmit = fn
 	return f
 }
 
 // OnCancel sets an on cancel handler for the form
-func (f *Form) OnCancel(f func()) *Form {
-	f.onCancel = f
+func (f *Form) OnCancel(fn func()) *Form {
+	f.onCancel = fn
 	return f
 }
 
@@ -208,7 +207,6 @@ func (f *Form) Notify(b *binding.Binding) {
 		fld := dataType.Field(i)
 		tag := fld.Tag.Get("form")
 		v := value.Field(i)
-		fmt.Printf("%d: %s = %v\n", i, tag, v)
 		if element, ok := f.Element(tag); ok {
 			switch element.(type) {
 			case *Entry:
@@ -232,8 +230,8 @@ func (f *Form) Element(tag string) (fyne.CanvasObject, bool) {
 	return nil, false
 }
 
-// Submit will fill in the bound struct from the contents of the fields
-func (f *Form) Submit() {
+// FormToBinding will fill in the bound data from the widgets
+func (f *Form) FormToBinding() {
 	// TODO :
 	// - validation hook
 	// - pre commit hook
@@ -243,7 +241,6 @@ func (f *Form) Submit() {
 		return
 	}
 	value := f.binding.Handler.Get()
-	savePtr := value
 	if value.Kind() == reflect.Ptr {
 		value = value.Elem()
 	}
@@ -252,7 +249,6 @@ func (f *Form) Submit() {
 		fld := dataType.Field(i)
 		tag := fld.Tag.Get("form")
 		v := value.Field(i)
-		fmt.Printf("%d: %s = %v\n", i, tag, v)
 		if element, ok := f.Element(tag); ok {
 			switch element.(type) {
 			case *Entry:
@@ -261,11 +257,14 @@ func (f *Form) Submit() {
 				v.SetBool(element.(*Check).Checked)
 			case *Slider:
 				v.SetFloat(element.(*Slider).Value)
+			case *Radio:
+				v.SetString(element.(*Radio).Selected)
+			case *Select:
+				v.SetString(element.(*Select).Selected)
+				// TODO - any other mappings we want here
+				// TODO - need a way to connect user defined widgets here as well
 			}
 		}
-		spew.Dump("set field", i, v)
 	}
-	spew.Dump("set data", value)
-	spew.Dump("from ptr", savePtr)
 	f.binding.Data.Update()
 }
