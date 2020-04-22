@@ -38,7 +38,7 @@ func NewLabelWithStyle(text string, alignment fyne.TextAlign, style fyne.TextSty
 }
 
 // Bind creates a new Binding between this widget and the bindable
-func (l *Label) Bind(value binding.Bindable) *Label {
+func (l *Label) Bind(value binding.Data) *Label {
 	b := binding.NewBinding(value, l, value)
 	if b.Handler.Kind() != reflect.String {
 		b.Handler = binding.StringHandler(b.Handler)

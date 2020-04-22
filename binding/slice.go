@@ -34,6 +34,9 @@ func (s *Slice) Kind() reflect.Kind {
 
 // ElementType returns the type of each element that the slice contains
 func (s *Slice) ElementType() reflect.Type {
+	if s == nil {
+		return nil
+	}
 	return s.elementType
 }
 
@@ -46,19 +49,25 @@ func (s *Slice) Get() reflect.Value {
 }
 
 // Set on a slice is a no-op but needs to be present to fullfil the
-// bindable interface
+// Handler interface
 func (s *Slice) Set(v reflect.Value) {
 }
 
 // Len returns the number of elements in the slice
 func (s *Slice) Len() int {
+	if s == nil {
+		return 0
+	}
 	return s.values.Len()
 }
 
 // Index returns the element at index i
 func (s *Slice) Index(i int) interface{} {
+	if s == nil {
+		return reflect.Zero(s.elementType)
+	}
 	if i < 0 || i >= s.values.Len() {
-		return nil
+		return reflect.Zero(s.elementType)
 	}
 	return s.values.Index(i).Interface()
 }
@@ -66,6 +75,9 @@ func (s *Slice) Index(i int) interface{} {
 // Append adds elements to the slice
 // Will panic if the values passed do not match the original type
 func (s *Slice) Append(values ...interface{}) {
+	if s == nil {
+		return
+	}
 	for _, v := range values {
 		s.values = reflect.Append(s.values, reflect.ValueOf(v))
 	}

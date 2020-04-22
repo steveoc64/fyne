@@ -22,6 +22,13 @@ func (g *Group) Prepend(object fyne.CanvasObject) {
 	Refresh(g)
 }
 
+// Clear wipes out the elements
+func (g *Group) Clear() {
+	g.box.Children = []fyne.CanvasObject{}
+
+	Refresh(g)
+}
+
 // Append adds a new CanvasObject to the end of the group
 func (g *Group) Append(object fyne.CanvasObject) {
 	g.box.Append(object)

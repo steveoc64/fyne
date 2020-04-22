@@ -56,7 +56,7 @@ func main() {
 			Bind(t).
 			Handler(binding.Numberf("%d", t)).
 			OnChanged(func(str string) {
-				println("edit changed to", str)
+				//println("edit changed to", str)
 			}),
 		widget.NewLabel("Kelvin Raw Value"),
 		widget.NewEntry().Bind(t),

@@ -39,6 +39,9 @@ type Form struct {
 	SubmitText string
 	CancelText string
 
+	onSubmit func()
+	onCancel func()
+
 	itemGrid *fyne.Container
 	binding  *binding.Binding
 }
@@ -133,8 +136,20 @@ func NewForm(items ...*FormItem) *Form {
 	return form
 }
 
+// OnSubmit sets an on submit handler for the form
+func (f *Form) OnSubmit(f func()) *Form {
+	f.onSubmit = f
+	return f
+}
+
+// OnCancel sets an on cancel handler for the form
+func (f *Form) OnCancel(f func()) *Form {
+	f.onCancel = f
+	return f
+}
+
 // Bind creates a new Binding between this form and some struct
-func (f *Form) Bind(value binding.Bindable) *Form {
+func (f *Form) Bind(value binding.Data) *Form {
 	if value == nil {
 		// invalid - return
 		return f

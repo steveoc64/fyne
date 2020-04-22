@@ -1164,10 +1164,10 @@ func NewEntry() *Entry {
 }
 
 // Bind creates a new Binding between this widget
-// and the Bindable passed in.
-// The Bindable's base Handler is applied, but can
+// and the Data passed in.
+// The Data's base Handler is applied, but can
 // be customised using the widget.Handler() call below
-func (e *Entry) Bind(value binding.Bindable) *Entry {
+func (e *Entry) Bind(value binding.Data) *Entry {
 	b := binding.NewBinding(value, e, value)
 	if b.Handler.Kind() != reflect.String {
 		b.Handler = binding.StringHandler(b.Handler)

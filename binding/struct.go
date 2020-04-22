@@ -21,18 +21,15 @@ func NewStruct(data interface{}) *Struct {
 		fyne.LogError("NewStruct()", fmt.Errorf("value must be a pointer, got %s", value.Type()))
 		return nil
 	}
-	value = value.Elem()
-	if value.Kind() != reflect.Struct {
-		fyne.LogError("NewStruct()", fmt.Errorf("value must point to a struct, got %s", value.Type()))
+	if value.Elem().Kind() != reflect.Struct {
+		fyne.LogError("NewStruct()", fmt.Errorf("value must point to a struct, got ptr to %s", value.Elem().Type()))
 		return nil
 	}
 	s := &Struct{
 		kind:        reflect.Struct,
-		value:       reflect.ValueOf(data),
-		elementType: value.Type(),
+		value:       value,
+		elementType: value.Elem().Type(),
 	}
-	println("setting struct of type", s.elementType.Name())
-	fmt.Printf("passed %T %v %s\n", value, value, value.Kind())
 	return s
 }
 
@@ -43,16 +40,38 @@ func (s *Struct) Get() reflect.Value {
 
 // Set/Get pair to implement a Handler
 func (s *Struct) Set(value reflect.Value) {
-	// v must be a ptr or value of struct of type v.elementType
+	isPtr := false
 	if value.Kind() == reflect.Ptr {
 		value = value.Elem()
+		isPtr = true
+	}
+	if value.Kind() != reflect.Struct {
+		fyne.LogError("Struct.Set()", fmt.Errorf("value must be a struct of type %s, got to %s (is pointer %v)",
+			s.elementType.String(),
+			value.Type(),
+			isPtr))
+		return
 	}
 	if value.Type() != s.elementType {
-		fyne.LogError("Struct.Set()", fmt.Errorf("requires a struct of type %s, got %s", s.elementType.Name(), value.Type()))
+		fyne.LogError("Struct.Set()", fmt.Errorf("value must be a struct of type %s, got to %s (is pointer %v)",
+			s.elementType.String(),
+			value.Type(),
+			isPtr))
 	}
+	if !s.value.Elem().CanSet() {
+		println("can set")
+	}
+	s.value.Elem().Set(value)
+	//s.value = value
 	s.Update()
 }
 
+// SetValue allows setting from a ptr to a struct
+func (s *Struct) SetValue(data interface{}) {
+	s.Set(reflect.ValueOf(data))
+}
+
+// Kind stamps this object of kind Struct
 func (s *Struct) Kind() reflect.Kind {
 	return reflect.Struct
 }

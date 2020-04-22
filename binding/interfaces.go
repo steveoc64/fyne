@@ -17,15 +17,15 @@ type Handler interface {
 	Set(reflect.Value)
 }
 
-// A Bindable is anything that implements both
+// A Data is anything that implements both
 // Observable and Handler interfaces
-type Bindable interface {
+// Its the thing that widgets Bind() to
+type Data interface {
 	Observable
 	Handler
 }
 
-// Notifiable is an object that gets notified when data changes
-// typically a widget - but could be any UI element
+// A Notifiable is anything that can recieve a Notify() callback
 type Notifiable interface {
 	Notify(*Binding)
 }
