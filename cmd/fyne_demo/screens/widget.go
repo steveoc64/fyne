@@ -177,18 +177,17 @@ func makeFormTab() fyne.Widget {
 	password.SetPlaceHolder("Password")
 	largeText := widget.NewMultiLineEntry()
 
-	form := &widget.Form{
-		OnCancel: func() {
-			fmt.Println("Cancelled")
-		},
-		OnSubmit: func() {
+	form := widget.NewForm().
+		OnSubmit(func() {
 			fmt.Println("Form submitted")
 			fmt.Println("Name:", name.Text)
 			fmt.Println("Email:", email.Text)
 			fmt.Println("Password:", password.Text)
 			fmt.Println("Message:", largeText.Text)
-		},
-	}
+		}).
+		OnCancel(func() {
+			fmt.Println("Cancelled")
+		})
 	form.Append("Name", name)
 	form.Append("Email", email)
 	form.Append("Password", password)

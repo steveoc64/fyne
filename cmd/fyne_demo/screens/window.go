@@ -81,9 +81,9 @@ func DialogScreen(win fyne.Window) fyne.CanvasObject {
 		widget.NewButton("Custom", func() {
 			entry := widget.NewEntry()
 			entry.SetPlaceHolder("Type something here")
-			entry.OnChanged = func(text string) {
+			entry.OnChanged(func(text string) {
 				fmt.Println("Entered", text)
-			}
+			})
 			sel := widget.NewSelect([]string{"Option A", "Option B", "Option C"}, func(o string) {
 				fmt.Println("Selected", o)
 			})

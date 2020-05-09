@@ -35,13 +35,13 @@ type fileDialog struct {
 func (f *fileDialog) makeUI() fyne.CanvasObject {
 	if f.save {
 		saveName := widget.NewEntry()
-		saveName.OnChanged = func(s string) {
+		saveName.OnChanged(func(s string) {
 			if s == "" {
 				f.open.Disable()
 			} else {
 				f.open.Enable()
 			}
-		}
+		})
 		f.fileName = saveName
 	} else {
 		f.fileName = widget.NewLabel("")
